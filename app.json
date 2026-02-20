@@ -43,6 +43,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "88daf6bd-8aae-4930-9106-64961a671859"
+      }
+    },
+    "owner": "carmona52"
   }
 }
