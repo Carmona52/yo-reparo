@@ -1,29 +1,61 @@
-import React, {useState} from "react";
-import {
-    StyleSheet,
-    TouchableOpacity,
-    View,
-    ScrollView,
-} from "react-native";
+import React, {useState, useEffect, useMemo} from "react";
+import {StyleSheet, TouchableOpacity, View, ScrollView, RefreshControl} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
+import {useRouter} from "expo-router";
 
 import {ThemedText} from "@/components/themed-text";
 import {ThemedView} from "@/components/themed-view";
-import {useRouter} from "expo-router";
-
-const MOCK_TASKS: Record<string, { id: string; job: string; client: string; time: string }[]> = {
-    "2026-02-21": [
-        {id: "1", job: "Plomería - Fuga en baño", client: "Juan Pérez", time: "09:00 AM"},
-        {id: "2", job: "Electricidad - Instalación", client: "Maria Garcia", time: "12:30 PM"},
-    ],
-};
+import {getAllJobs} from "@/libs/owner/jobs/get-jobs";
+import {Job} from "@/libs/types/job";
+import {supabase} from "@/libs/supabase";
 
 export default function HomeScreen() {
     const router = useRouter();
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    const [selectedDate, setSelectedDate] = useState(todayStr);
 
+    const [jobs, setJobs] = useState<Job[]>([]);
+    const [selectedDate, setSelectedDate] = useState(todayStr);
+    const [refreshing, setRefreshing] = useState(false);
+    const [userName, setUserName] = useState("Usuario");
+
+    const loadDashboardData = async (force = false) => {
+        try {
+            const data = await getAllJobs(force);
+            setJobs(Array.isArray(data) ? data : data.data || []);
+
+            const {data: {user}} = await supabase.auth.getUser();
+            if (user?.user_metadata?.full_name) {
+                setUserName(user.user_metadata.full_name);
+            }
+        } catch (error) {
+            console.error("Error en Dashboard:", error);
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
+        loadDashboardData();
+    }, []);
+
+    const tasksByDate = useMemo(() => {
+        return jobs.reduce((acc: Record<string, Job[]>, job) => {
+            if (job.fecha_cita) {
+                const dateKey = job.fecha_cita.split('T')[0];
+                if (!acc[dateKey]) acc[dateKey] = [];
+                acc[dateKey].push(job);
+            }
+            return acc;
+        }, {});
+    }, [jobs]);
+
+    const selectedDayTasks = tasksByDate[selectedDate] || [];
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        loadDashboardData(true);
+    };
 
     const getDaysInMonth = () => {
         const year = today.getFullYear();
@@ -37,21 +69,19 @@ export default function HomeScreen() {
         return days;
     };
 
-    const daysInMonth = getDaysInMonth();
-
     const formatDateTitle = (dateString: string) => {
         const date = new Date(dateString + 'T00:00:00');
         return date.toLocaleDateString("es-ES", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
+            weekday: "long", day: "numeric", month: "long",
         });
     };
 
     return (
         <SafeAreaView style={{flex: 1}}>
-            <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-
+            <ScrollView
+                style={styles.container}
+                contentContainerStyle={styles.contentContainer}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4"/>}>
                 <ThemedView style={styles.headerContainer}>
                     <View>
                         <ThemedText type="subtitle" style={{opacity: 0.7}}>Hoy es</ThemedText>
@@ -62,21 +92,21 @@ export default function HomeScreen() {
                 </ThemedView>
 
                 <ThemedView style={styles.userInfo}>
-                    <ThemedText>Hola, <ThemedText type="defaultSemiBold">{"Usuario"}</ThemedText></ThemedText>
+                    <ThemedText>Hola, <ThemedText type="defaultSemiBold">{userName}</ThemedText></ThemedText>
                 </ThemedView>
 
                 <ThemedView style={styles.calendarContainer}>
-                    <ThemedText type="subtitle" style={styles.sectionTitle}>Mes</ThemedText>
+                    <ThemedText type="subtitle" style={styles.sectionTitle}>Calendario de Citas</ThemedText>
                     <View style={styles.weekDaysRow}>
                         {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, index) => (
                             <ThemedText key={index} style={styles.weekDayText}>{day}</ThemedText>
                         ))}
                     </View>
                     <View style={styles.daysGrid}>
-                        {daysInMonth.map((date, index) => {
+                        {getDaysInMonth().map((date, index) => {
                             const dateStr = date.toISOString().split('T')[0];
                             const isSelected = selectedDate === dateStr;
-                            const hasTasks = MOCK_TASKS[dateStr];
+                            const hasTasks = tasksByDate[dateStr];
 
                             return (
                                 <TouchableOpacity
@@ -97,45 +127,54 @@ export default function HomeScreen() {
                         })}
                     </View>
                 </ThemedView>
-                <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
-                    <ThemedText>Salir</ThemedText>
-                </TouchableOpacity>
 
                 <ThemedView style={styles.tasksContainer}>
                     <ThemedText type="subtitle" style={styles.sectionTitle}>
-                        Tareas para el {selectedDate.split('-')[2]}
+                        Tareas: {selectedDate.split('-')[2]} de {today.toLocaleString('es-ES', {month: 'long'})}
                     </ThemedText>
 
-                    {MOCK_TASKS[selectedDate] ? (
-                        MOCK_TASKS[selectedDate].map((task) => (
-                            <ThemedView key={task.id} style={styles.taskCard}>
-                                <View style={styles.timeColumn}>
-                                    <ThemedText type="defaultSemiBold" style={styles.timeText}>{task.time}</ThemedText>
-                                </View>
-                                <View style={styles.verticalDivider}/>
-                                <View style={styles.detailsColumn}>
-                                    <ThemedText type="defaultSemiBold" style={styles.jobTitle}>{task.job}</ThemedText>
-                                    <View style={styles.clientRow}>
-                                        {/* SOLUCIÓN 2: Cambiar Text por ThemedText */}
-                                        <ThemedText style={styles.clientLabel}>Cliente: </ThemedText>
-                                        <ThemedText style={styles.clientName}>{task.client}</ThemedText>
+                    {selectedDayTasks.length > 0 ? (
+                        selectedDayTasks.map((task) => (
+                            <TouchableOpacity
+                                key={task.id}
+                                activeOpacity={0.7}
+                                onPress={() => router.push(`/jobs/${task.id}` as any)}>
+                                <ThemedView key={task.id} style={styles.taskCard}>
+                                    <View style={styles.timeColumn}>
+                                        <ThemedText type="defaultSemiBold" style={styles.timeText}>
+                                            {task.fecha_cita ? new Date(task.fecha_cita).toLocaleTimeString([], {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            }) : '--:--'}
+                                        </ThemedText>
                                     </View>
-                                </View>
-                            </ThemedView>
+                                    <View style={styles.verticalDivider}/>
+                                    <View style={styles.detailsColumn}>
+                                        <ThemedText type="defaultSemiBold"
+                                                    style={styles.jobTitle}>{task.title}</ThemedText>
+                                        <View style={styles.clientRow}>
+                                            <ThemedText style={styles.clientLabel}>Estado: </ThemedText>
+                                            <ThemedText style={[styles.clientName, {
+                                                color: '#0a7ea4',
+                                                fontWeight: 'bold'
+                                            }]}>{task.status}</ThemedText>
+                                        </View>
+                                    </View>
+                                </ThemedView>
+                            </TouchableOpacity>
                         ))
                     ) : (
                         <ThemedView style={styles.emptyState}>
-                            <ThemedText style={{opacity: 0.6, textAlign: 'center'}}>No hay tareas
-                                agendadas.</ThemedText>
+                            <ThemedText style={{opacity: 0.6, textAlign: 'center'}}>No hay tareas para este
+                                día.</ThemedText>
                         </ThemedView>
                     )}
                 </ThemedView>
-
             </ScrollView>
+
         </SafeAreaView>
     );
 }
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,

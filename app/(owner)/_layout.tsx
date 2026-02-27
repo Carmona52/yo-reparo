@@ -34,6 +34,11 @@ export default function OwnerLayout() {
                         <Ionicons name={focused ? "people" : "people-outline"} size={24} color={color} />
                     ),
                 }} />
+            <Tabs.Screen
+                name="jobs/[id]"
+                options={{
+                    href: null,
+                }} />
 
             <Tabs.Screen
                 name='contactos/index'
@@ -58,6 +63,7 @@ export default function OwnerLayout() {
                 options={{
                     href: null,
                 }} />
+
         </Tabs>
     );
 }

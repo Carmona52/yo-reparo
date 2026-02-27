@@ -10,5 +10,6 @@ export interface Job {
     status: string;
     created_at: string;
     fecha_cita: string;
+    image_url?:string;
 
 }

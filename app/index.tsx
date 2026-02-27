@@ -1,6 +1,9 @@
 import { useEffect } from 'react'
+import {ActivityIndicator, StyleSheet} from 'react-native' // Importamos componentes básicos
 import { useRouter } from 'expo-router'
 import { supabase } from '@/libs/supabase'
+import {ThemedView} from "@/components/themed-view";
+import {ThemedText} from "@/components/themed-text";
 
 export default function Index() {
   const router = useRouter()
@@ -24,12 +27,9 @@ export default function Index() {
         .single()
 
     if (error) {
-      console.log('PROFILE ERROR:', error)
       router.replace('/(auth)/login')
       return
     }
-
-    console.log('profile', profile)
 
     if (profile?.role === 'owner') {
       router.replace('/(owner)')
@@ -38,5 +38,23 @@ export default function Index() {
     }
   }
 
-  return null
+  return (
+      <ThemedView style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <ThemedText style={styles.text}>Cargando tu perfil...</ThemedText>
+      </ThemedView>
+  )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  text: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+})
