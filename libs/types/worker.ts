@@ -3,5 +3,6 @@ export type Worker = {
     role: 'worker' | 'owner' | 'user',
     name: string,
     phone: string,
-    created_at: string
+    created_at: string,
+    email: string,
 }

@@ -1,16 +1,30 @@
 export interface Contact {
     id: string;
-    created_at: string;
-    updated_at: string;
+    created_at?: string;
+    updated_at?: string;
     name: string;
     phone: string;
     address_line_1: string;
-    address_line_2: string;
+    address_line_2?: string;
     neighborhood: string;
     city: string;
     state: string;
     postal_code: string;
     country: string;
-    latitude:number;
-    longitude:number;
+    latitude?: number;
+    longitude?: number;
+}
+
+export interface CreateContact{
+    name: string;
+    phone?: string;
+    address_line_1?: string;
+    address_line_2?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    postal_code?: string;
+    country?: string;
+    latitude?: number | string | null;
+    longitude?: number | string | null;
 }

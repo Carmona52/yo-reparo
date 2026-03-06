@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import {ActivityIndicator, StyleSheet} from 'react-native' // Importamos componentes básicos
+import {ActivityIndicator, StyleSheet} from 'react-native'
 import { useRouter } from 'expo-router'
 import { supabase } from '@/libs/supabase'
 import {ThemedView} from "@/components/themed-view";

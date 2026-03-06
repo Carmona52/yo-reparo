@@ -1,14 +1,22 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View, Linking, TouchableOpacity, TextInput, ScrollView, useColorScheme } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import {useState, useEffect, useCallback, useMemo} from 'react';
+import {
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    View,
+    Linking,
+    TouchableOpacity,
+    TextInput,
+    useColorScheme
+} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {Ionicons} from '@expo/vector-icons';
+import {useRouter} from 'expo-router';
 
-import { ThemedView } from "@/components/themed-view";
-import { ThemedText } from "@/components/themed-text";
-import { getAllWorkers } from "@/libs/owner/workers/get-workers";
-import { Worker } from '@/libs/types/worker'
-
+import {ThemedView} from "@/components/themed-view";
+import {ThemedText} from "@/components/themed-text";
+import {getAllWorkers} from "@/libs/owner/workers/get-workers";
+import {Worker} from '@/libs/types/worker';
 
 export default function WorkersScreen() {
     const router = useRouter();
@@ -17,9 +25,7 @@ export default function WorkersScreen() {
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedRole, setSelectedRole] = useState('Todos');
 
     const fetchData = async (force = false) => {
         try {
@@ -43,52 +49,68 @@ export default function WorkersScreen() {
     }, []);
 
     const filteredWorkers = useMemo(() => {
-        return workers.filter(worker => {
-            const matchesSearch = worker.name.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesRole = selectedRole === 'Todos' || worker.role === selectedRole;
-            return matchesSearch && matchesRole;
-        });
-    }, [workers, searchQuery, selectedRole]);
+        return workers.filter(worker =>
+            worker.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [workers, searchQuery]);
 
     const makeCall = (phone: string) => {
         if (phone) Linking.openURL(`tel:${phone}`);
     };
 
-    const renderContactItem = ({ item }: { item: Worker }) => (
-        <ThemedView style={styles.card}>
-            <View style={styles.cardHeader}>
-                <View style={styles.avatar}>
-                    <ThemedText style={styles.avatarText}>
-                        {item.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
-                    </ThemedText>
-                </View>
-                <View style={styles.infoContainer}>
-                    <ThemedText type="defaultSemiBold" style={styles.nameText}>{item.name}</ThemedText>
-                    <ThemedText style={styles.addressText} numberOfLines={1}>
-                        {item.role} • {item.phone}
-                    </ThemedText>
-                </View>
+    const renderContactItem = ({item}: { item: Worker }) => (
+        <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push(`/workers/${item.id}` as any)}>
+            <ThemedView style={[styles.card, {backgroundColor: isDark ? '#1c1c1e' : '#fff'}]}>
+                <View style={styles.cardHeader}>
+                    <View style={styles.avatar}>
+                        <ThemedText style={styles.avatarText}>
+                            {item.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                        </ThemedText>
+                    </View>
 
-                {item.phone && (
-                    <TouchableOpacity style={styles.callButton} onPress={() => makeCall(item.phone)}>
-                        <Ionicons name="call" size={20} color="#fff" />
-                    </TouchableOpacity>
-                )}
-            </View>
-        </ThemedView>
+                    <View style={styles.infoContainer}>
+                        <ThemedText type="defaultSemiBold" style={styles.nameText}>
+                            {item.name}
+                        </ThemedText>
+                        <View style={styles.roleTag}>
+                            <ThemedText style={styles.roleText}>{item.role || 'Trabajador'}</ThemedText>
+                        </View>
+                    </View>
+
+                    <View style={styles.actionButtons}>
+                        {item.phone && (
+                            <TouchableOpacity
+                                style={styles.callButton}
+                                onPress={() => makeCall(item.phone)}
+                            >
+                                <Ionicons name="call" size={18} color="#fff"/>
+                            </TouchableOpacity>
+                        )}
+                        <Ionicons name="chevron-forward" size={20} color="#ccc" style={{marginLeft: 8}}/>
+                    </View>
+                </View>
+            </ThemedView>
+        </TouchableOpacity>
     );
 
     return (
-        <SafeAreaView style={{ flex: 1 }}>
+        <SafeAreaView style={{flex: 1}}>
             <ThemedView style={styles.container}>
-                <ThemedText type="title" style={styles.headerTitle}>Trabajadores Registrados</ThemedText>
+                <View style={styles.headerRow}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                        <Ionicons name="chevron-back" size={24} color={isDark ? "#fff" : "#333"}/>
+                    </TouchableOpacity>
+                    <ThemedText type="title" style={styles.headerTitle}>Personal</ThemedText>
+                </View>
 
-                <View style={[styles.searchContainer, { backgroundColor: isDark ? '#1c1c1e' : 'rgba(150, 150, 150, 0.1)' }]}>
-                    <Ionicons name="search" size={20} color="#8e8e93" style={{ marginRight: 10 }} />
+                <View style={[styles.searchContainer, {backgroundColor: isDark ? '#1c1c1e' : '#f0f0f0'}]}>
+                    <Ionicons name="search" size={18} color="#8e8e93" style={{marginRight: 10}}/>
                     <TextInput
                         placeholder="Buscar por nombre..."
                         placeholderTextColor="#8e8e93"
-                        style={[styles.searchInput, { color: isDark ? '#fff' : '#000' }]}
+                        style={[styles.searchInput, {color: isDark ? '#fff' : '#000'}]}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
@@ -99,12 +121,16 @@ export default function WorkersScreen() {
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderContactItem}
                     contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4" />
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4"/>
                     }
                     ListEmptyComponent={
                         !loading ? (
-                            <ThemedText style={styles.emptyText}>No se encontró personal con estos criterios.</ThemedText>
+                            <View style={styles.emptyContainer}>
+                                <Ionicons name="people-outline" size={50} color="#ccc"/>
+                                <ThemedText style={styles.emptyText}>No hay personal registrado</ThemedText>
+                            </View>
                         ) : null
                     }
                 />
@@ -113,78 +139,78 @@ export default function WorkersScreen() {
             <TouchableOpacity
                 style={styles.fab}
                 activeOpacity={0.8}
-                onPress={() => router.push("/workers/create-worker")}>
-                <Ionicons name="add" size={30} color="#fff" />
+                onPress={() => router.push("/(owner)/workers/create-worker")}>
+                <Ionicons name="add" size={30} color="#fff"/>
             </TouchableOpacity>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, paddingHorizontal: 16 },
-    headerTitle: { marginVertical: 20 },
+    container: {flex: 1, paddingHorizontal: 20},
+    headerRow: {flexDirection: 'row', alignItems: 'center', marginVertical: 20},
+    backBtn: {marginRight: 15},
+    headerTitle: {fontSize: 28},
 
-    // Buscador
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
-        height: 48,
-        borderRadius: 12,
-        marginBottom: 15
+        paddingHorizontal: 15,
+        height: 50,
+        borderRadius: 15,
+        marginBottom: 20,
     },
-    searchInput: { flex: 1, fontSize: 16 },
+    searchInput: {flex: 1, fontSize: 16},
 
-    // Filtros
-    filterChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: 'rgba(150, 150, 150, 0.1)',
-        marginRight: 8,
-    },
-    activeChip: { backgroundColor: '#0a7ea4' },
-    filterText: { fontSize: 14, opacity: 0.8 },
-    activeFilterText: { color: '#fff', fontWeight: 'bold', opacity: 1 },
-
-    listContent: { paddingBottom: 100 },
+    listContent: {paddingBottom: 100},
     card: {
-        padding: 12,
-        borderRadius: 16,
-        marginBottom: 10,
-        backgroundColor: 'rgba(150, 150, 150, 0.08)',
-        borderWidth: 1,
-        borderColor: 'rgba(150, 150, 150, 0.1)',
+        padding: 15,
+        borderRadius: 20,
+        marginBottom: 12,
+        // Sombra ligera
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
-    cardHeader: { flexDirection: 'row', alignItems: 'center' },
+    cardHeader: {flexDirection: 'row', alignItems: 'center'},
     avatar: {
-        width: 45, height: 45, borderRadius: 22.5,
-        backgroundColor: '#0a7ea4', justifyContent: 'center', alignItems: 'center', marginRight: 12,
+        width: 50, height: 50, borderRadius: 15,
+        backgroundColor: '#0a7ea4', justifyContent: 'center', alignItems: 'center', marginRight: 15,
     },
-    avatarText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    infoContainer: { flex: 1 },
-    nameText: { fontSize: 16 },
-    addressText: { fontSize: 13, opacity: 0.6, marginTop: 2 },
+    avatarText: {color: '#fff', fontWeight: 'bold', fontSize: 18},
+    infoContainer: {flex: 1},
+    nameText: {fontSize: 17, fontWeight: '600'},
+    roleTag: {
+        backgroundColor: 'rgba(10, 126, 164, 0.1)',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginTop: 4
+    },
+    roleText: {fontSize: 11, color: '#0a7ea4', fontWeight: 'bold', textTransform: 'uppercase'},
+
+    actionButtons: {flexDirection: 'row', alignItems: 'center'},
     callButton: {
-        width: 40, height: 40, borderRadius: 20,
-        backgroundColor: '#10b981', justifyContent: 'center', alignItems: 'center', marginLeft: 8,
+        width: 36, height: 36, borderRadius: 12,
+        backgroundColor: '#10b981', justifyContent: 'center', alignItems: 'center',
     },
-    emptyText: { textAlign: 'center', marginTop: 40, opacity: 0.5 },
+
+    emptyContainer: {alignItems: 'center', marginTop: 60},
+    emptyText: {textAlign: 'center', marginTop: 10, opacity: 0.4},
+
     fab: {
         position: 'absolute',
         bottom: 30,
         right: 20,
         backgroundColor: '#0a7ea4',
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 10,
+        width: 60, height: 60, borderRadius: 30,
+        justifyContent: 'center', alignItems: 'center',
+        elevation: 5,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        zIndex: 999
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
     }
 });

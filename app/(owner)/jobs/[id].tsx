@@ -1,5 +1,15 @@
 import {useState, useEffect} from 'react';
-import {View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Linking, Image} from 'react-native';
+import {
+    View,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    Alert,
+    ActivityIndicator,
+    Linking,
+    Image,
+    Platform
+} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -58,10 +68,22 @@ export default function JobDetailScreen() {
         }
     };
 
+    // Formateo de Fecha y Hora
+    const formatDate = (dateStr?: string) => {
+        if (!dateStr) return {day: 'Pendiente', time: '--:--'};
+        const date = new Date(dateStr);
+        return {
+            day: date.toLocaleDateString('es-ES', {weekday: 'long', day: 'numeric', month: 'long'}),
+            time: date.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})
+        };
+    };
+
+    const dateInfo = formatDate(job?.fecha_cita);
     const assignedWorker = workers.find(w => w.id === job?.worker_id);
+
     const getStatusColor = (status: string) => {
         const colors = {'finalizado': '#10b981', 'en proceso': '#3b82f6', 'pendiente': '#f59e0b'};
-        return colors[status as keyof typeof colors] || '#666';
+        return colors[status.toLowerCase() as keyof typeof colors] || '#666';
     };
 
     if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large"
@@ -70,98 +92,124 @@ export default function JobDetailScreen() {
 
     return (
         <ThemedView style={{flex: 1}}>
+            {/* Cabecera Flotante */}
             <View style={styles.topBar}>
-                <TouchableOpacity onPress={() => router.back()}><Ionicons name="close" size={28}
-                                                                          color="#888"/></TouchableOpacity>
+                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                    <Ionicons name="chevron-back" size={24} color="#333"/>
+                </TouchableOpacity>
                 <View style={[styles.badge, {backgroundColor: getStatusColor(job.status)}]}>
                     <ThemedText style={styles.badgeText}>{job.status}</ThemedText>
                 </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
+                {/* Título e Imagen Principal */}
                 <View style={styles.headerSection}>
                     <ThemedText type="title" style={styles.title}>{job.title}</ThemedText>
 
-                    {/* VISUALIZACIÓN DE IMAGEN (Si existe en la DB) */}
-                    {job.image_url && (
-                        <View style={styles.imageContainer}>
+                    <View style={styles.mainImageWrapper}>
+                        {job.image_url ? (
                             <Image source={{uri: job.image_url}} style={styles.jobImage}/>
-                        </View>
-                    )}
-
-                    <View style={styles.assignmentBox}>
-                        <ThemedText style={styles.label}>Trabajador asignado:</ThemedText>
-                        <TouchableOpacity style={styles.dropdownTrigger}
-                                          onPress={() => setShowWorkerList(!showWorkerList)}>
-                            <View style={styles.workerInfoRow}>
-                                <View
-                                    style={[styles.miniAvatar, {backgroundColor: assignedWorker ? '#0a7ea4' : '#eee'}]}>
-                                    <ThemedText
-                                        style={styles.avatarLetter}>{assignedWorker?.name[0] || '?'}</ThemedText>
-                                </View>
-                                <ThemedText type="defaultSemiBold" style={styles.workerNameText}>
-                                    {assignedWorker ? assignedWorker.name : "Sin asignar todavía"}
-                                </ThemedText>
-                            </View>
-                            <Ionicons name={showWorkerList ? "chevron-up" : "chevron-down"} size={20} color="#0a7ea4"/>
-                        </TouchableOpacity>
-
-                        {showWorkerList && (
-                            <View style={styles.dropdownContent}>
-                                {workers.map(w => (
-                                    <TouchableOpacity key={w.id} style={styles.workerOption}
-                                                      onPress={() => handleUpdate({worker_id: w.id})}>
-                                        <ThemedText style={job.worker_id === w.id && {
-                                            color: '#0a7ea4',
-                                            fontWeight: 'bold'
-                                        }}>{w.name}</ThemedText>
-                                        {job.worker_id === w.id &&
-                                            <Ionicons name="checkmark" size={18} color="#0a7ea4"/>}
-                                    </TouchableOpacity>
-                                ))}
+                        ) : (
+                            <View style={styles.noImagePlaceholder}>
+                                <Ionicons name="image-outline" size={48} color="#ccc"/>
+                                <ThemedText style={{color: '#aaa'}}>Sin evidencia fotográfica</ThemedText>
                             </View>
                         )}
                     </View>
                 </View>
 
-                {/* DESCRIPCIÓN */}
-                <View style={styles.card}>
-                    <ThemedText type="defaultSemiBold" style={styles.cardLabel}>Descripción del Servicio</ThemedText>
-                    <ThemedText
-                        style={styles.descriptionText}>{job.description || "Sin descripción detallada."}</ThemedText>
-                </View>
-
-                {/* LOGÍSTICA */}
-                <View style={styles.card}>
-                    <View style={styles.detailRow}>
-                        <Ionicons name="location" size={20} color="#0a7ea4"/>
-                        <View style={{flex: 1, marginLeft: 12}}>
-                            <ThemedText type="defaultSemiBold">Ubicación</ThemedText>
-                            <ThemedText style={styles.subText}>{job.address}</ThemedText>
-                        </View>
-                        <TouchableOpacity
-                            onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`)}>
-                            <Ionicons name="map-outline" size={24} color="#10b981"/>
-                        </TouchableOpacity>
+                {/* Grid de Información Logística */}
+                <View style={styles.infoGrid}>
+                    <View style={styles.infoCard}>
+                        <Ionicons name="calendar" size={22} color="#0a7ea4"/>
+                        <ThemedText style={styles.infoCardLabel}>Fecha</ThemedText>
+                        <ThemedText type="defaultSemiBold" style={styles.infoCardValue}>{dateInfo.day}</ThemedText>
+                    </View>
+                    <View style={[styles.infoCard, {flex: 0.4}]}>
+                        <Ionicons name="time" size={22} color="#0a7ea4"/>
+                        <ThemedText style={styles.infoCardLabel}>Hora</ThemedText>
+                        <ThemedText type="defaultSemiBold" style={styles.infoCardValue}>{dateInfo.time}</ThemedText>
                     </View>
                 </View>
 
-                {/* ACCIONES DE ESTADO */}
-                <ThemedText style={[styles.label, {marginLeft: 5}]}>Actualizar progreso</ThemedText>
-                <View style={styles.statusGrid}>
-                    {['pendiente', 'en proceso', 'finalizado'].map((s) => (
-                        <TouchableOpacity
-                            key={s}
-                            style={[styles.statusBtn, job.status === s && {backgroundColor: getStatusColor(s)}]}
-                            onPress={() => handleUpdate({status: s})}
-                        >
-                            <ThemedText style={[styles.btnText, job.status === s && {color: '#fff'}]}>{s}</ThemedText>
-                        </TouchableOpacity>
-                    ))}
+                {/* Tarjeta de Ubicación */}
+                <TouchableOpacity
+                    style={styles.locationCard}
+                    onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`)}
+                >
+                    <View style={styles.iconCircle}>
+                        <Ionicons name="location" size={22} color="#fff"/>
+                    </View>
+                    <View style={{flex: 1, marginLeft: 15}}>
+                        <ThemedText type="defaultSemiBold" style={{fontSize: 16}}>Dirección</ThemedText>
+                        <ThemedText style={styles.subText}>{job.address}</ThemedText>
+                    </View>
+                    <Ionicons name="navigate-circle" size={32} color="#10b981"/>
+                </TouchableOpacity>
+
+                {/* Asignación de Trabajador */}
+                <View style={styles.assignmentSection}>
+                    <ThemedText style={styles.label}>Responsable</ThemedText>
+                    <TouchableOpacity style={styles.workerSelector} onPress={() => setShowWorkerList(!showWorkerList)}>
+                        <View style={styles.workerInfoRow}>
+                            <View style={[styles.avatar, {backgroundColor: assignedWorker ? '#0a7ea4' : '#eee'}]}>
+                                <ThemedText style={styles.avatarLetter}>{assignedWorker?.name[0] || '?'}</ThemedText>
+                            </View>
+                            <View>
+                                <ThemedText type="defaultSemiBold" style={{fontSize: 16}}>
+                                    {assignedWorker ? assignedWorker.name : "Pendiente de asignar"}
+                                </ThemedText>
+                                <ThemedText style={{fontSize: 12, opacity: 0.5}}>Toca para cambiar</ThemedText>
+                            </View>
+                        </View>
+                        <Ionicons name={showWorkerList ? "chevron-up" : "chevron-down"} size={20} color="#0a7ea4"/>
+                    </TouchableOpacity>
+
+                    {showWorkerList && (
+                        <View style={styles.dropdown}>
+                            {workers.map(w => (
+                                <TouchableOpacity key={w.id} style={styles.workerOption}
+                                                  onPress={() => handleUpdate({worker_id: w.id})}>
+                                    <ThemedText
+                                        style={[styles.workerOptionText, job.worker_id === w.id && styles.activeText]}>{w.name}</ThemedText>
+                                    {job.worker_id === w.id &&
+                                        <Ionicons name="checkmark-circle" size={20} color="#0a7ea4"/>}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
                 </View>
+
+                {/* Descripción */}
+                <View style={styles.descSection}>
+                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Detalles del Servicio</ThemedText>
+                    <ThemedText
+                        style={styles.descriptionText}>{job.description || "El cliente no proporcionó una descripción adicional."}</ThemedText>
+                </View>
+
+                {/* Acciones de Estado */}
+                <View style={styles.statusSection}>
+                    <ThemedText style={styles.label}>Actualizar Estado</ThemedText>
+                    <View style={styles.statusGrid}>
+                        {['pendiente', 'en proceso', 'finalizado'].map((s) => (
+                            <TouchableOpacity
+                                key={s}
+                                style={[styles.statusBtn, job.status.toLowerCase() === s && {backgroundColor: getStatusColor(s)}]}
+                                onPress={() => handleUpdate({status: s})}
+                            >
+                                <ThemedText
+                                    style={[styles.btnText, job.status.toLowerCase() === s && {color: '#fff'}]}>{s}</ThemedText>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+                <View style={{height: 50}}/>
             </ScrollView>
 
-            {updating && <View style={styles.loadingOverlay}><ActivityIndicator color="#fff"/></View>}
+            {updating && <View style={styles.loadingOverlay}><ActivityIndicator size="large" color="#fff"/></View>}
         </ThemedView>
     );
 }
@@ -173,66 +221,136 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
-        paddingTop: 60
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: 15,
+        backgroundColor: 'transparent',
     },
-    badge: {paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20},
-    badgeText: {color: '#fff', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase'},
+    backBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(150,150,150,0.1)',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    badge: {paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12},
+    badgeText: {color: '#fff', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase'},
     scroll: {padding: 20},
-    headerSection: {marginBottom: 30},
-    title: {fontSize: 32, marginBottom: 20},
 
-    // ESTILOS DE IMAGEN (SOLO DISPLAY)
-    imageContainer: {
+    headerSection: {marginBottom: 25},
+    title: {fontSize: 28, fontWeight: '800', marginBottom: 20, color: '#1a1a1a'},
+
+    mainImageWrapper: {
         width: '100%',
-        height: 220,
-        borderRadius: 24,
-        marginBottom: 25,
+        height: 250,
+        borderRadius: 28,
         overflow: 'hidden',
-        backgroundColor: 'rgba(150,150,150,0.1)'
+        backgroundColor: '#f0f0f0',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 4},
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
     },
     jobImage: {width: '100%', height: '100%', resizeMode: 'cover'},
+    noImagePlaceholder: {flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10},
 
-    label: {fontSize: 13, opacity: 0.5, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1},
-    assignmentBox: {
+    infoGrid: {flexDirection: 'row', gap: 12, marginBottom: 20},
+    infoCard: {
+        flex: 1,
         backgroundColor: 'rgba(10, 126, 164, 0.05)',
         padding: 15,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(10, 126, 164, 0.1)'
+        borderColor: 'rgba(10, 126, 164, 0.1)',
     },
-    dropdownTrigger: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-    workerInfoRow: {flexDirection: 'row', alignItems: 'center'},
-    miniAvatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: 'center',
+    infoCardLabel: {fontSize: 11, opacity: 0.5, textTransform: 'uppercase', marginTop: 5},
+    infoCardValue: {fontSize: 14, marginTop: 2, textTransform: 'capitalize'},
+
+    locationCard: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginRight: 12
+        backgroundColor: '#fff',
+        padding: 16,
+        borderRadius: 24,
+        marginBottom: 25,
+        borderWidth: 1,
+        borderColor: '#f0f0f0',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
     },
-    avatarLetter: {color: '#fff', fontWeight: 'bold'},
-    workerNameText: {fontSize: 16},
-    dropdownContent: {marginTop: 15, borderTopWidth: 1, borderColor: 'rgba(10, 126, 164, 0.1)', paddingTop: 10},
-    workerOption: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12},
-    card: {backgroundColor: 'rgba(150,150,150,0.08)', borderRadius: 24, padding: 24, marginBottom: 20},
-    cardLabel: {marginBottom: 10, fontSize: 18},
-    descriptionText: {fontSize: 16, lineHeight: 24, opacity: 0.8},
-    detailRow: {flexDirection: 'row', alignItems: 'center'},
-    subText: {fontSize: 14, opacity: 0.6, marginTop: 2},
-    statusGrid: {flexDirection: 'row', gap: 10, marginTop: 10},
-    statusBtn: {
-        flex: 1,
-        paddingVertical: 15,
-        borderRadius: 16,
-        backgroundColor: 'rgba(150,150,150,0.1)',
+    iconCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#0a7ea4',
+        justifyContent: 'center',
         alignItems: 'center'
     },
-    btnText: {fontSize: 12, fontWeight: 'bold', textTransform: 'capitalize'},
+    subText: {fontSize: 14, opacity: 0.6, marginTop: 4},
+
+    assignmentSection: {marginBottom: 25},
+    label: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        opacity: 0.4,
+        marginBottom: 10,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginLeft: 5
+    },
+    workerSelector: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: 'rgba(150,150,150,0.05)',
+        padding: 12,
+        borderRadius: 20,
+    },
+    avatar: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginRight: 15},
+    avatarLetter: {color: '#fff', fontSize: 18, fontWeight: 'bold'},
+    workerInfoRow: {flexDirection: 'row', alignItems: 'center'},
+
+    dropdown: {
+        marginTop: 10,
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#eee'
+    },
+    workerOption: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f9f9f9'
+    },
+    workerOptionText: {fontSize: 15},
+    activeText: {color: '#0a7ea4', fontWeight: 'bold'},
+
+    descSection: {marginBottom: 30},
+    sectionTitle: {fontSize: 18, marginBottom: 10},
+    descriptionText: {fontSize: 15, lineHeight: 22, color: '#555'},
+
+    statusSection: {marginTop: 10},
+    statusGrid: {flexDirection: 'row', gap: 8},
+    statusBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 18,
+        backgroundColor: '#f0f0f0',
+        alignItems: 'center'
+    },
+    btnText: {fontSize: 12, fontWeight: '700', textTransform: 'uppercase'},
+
     loadingOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        backgroundColor: 'rgba(0,0,0,0.4)',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 10
+        zIndex: 99
     }
 });
