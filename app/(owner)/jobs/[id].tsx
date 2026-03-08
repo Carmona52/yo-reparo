@@ -68,7 +68,6 @@ export default function JobDetailScreen() {
         }
     };
 
-    // Formateo de Fecha y Hora
     const formatDate = (dateStr?: string) => {
         if (!dateStr) return {day: 'Pendiente', time: '--:--'};
         const date = new Date(dateStr);
@@ -92,7 +91,6 @@ export default function JobDetailScreen() {
 
     return (
         <ThemedView style={{flex: 1}}>
-            {/* Cabecera Flotante */}
             <View style={styles.topBar}>
                 <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
                     <Ionicons name="chevron-back" size={24} color="#333"/>
@@ -104,7 +102,6 @@ export default function JobDetailScreen() {
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-                {/* Título e Imagen Principal */}
                 <View style={styles.headerSection}>
                     <ThemedText type="title" style={styles.title}>{job.title}</ThemedText>
 
@@ -120,7 +117,6 @@ export default function JobDetailScreen() {
                     </View>
                 </View>
 
-                {/* Grid de Información Logística */}
                 <View style={styles.infoGrid}>
                     <View style={styles.infoCard}>
                         <Ionicons name="calendar" size={22} color="#0a7ea4"/>
@@ -134,7 +130,6 @@ export default function JobDetailScreen() {
                     </View>
                 </View>
 
-                {/* Tarjeta de Ubicación */}
                 <TouchableOpacity
                     style={styles.locationCard}
                     onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`)}
@@ -149,7 +144,6 @@ export default function JobDetailScreen() {
                     <Ionicons name="navigate-circle" size={32} color="#10b981"/>
                 </TouchableOpacity>
 
-                {/* Asignación de Trabajador */}
                 <View style={styles.assignmentSection}>
                     <ThemedText style={styles.label}>Responsable</ThemedText>
                     <TouchableOpacity style={styles.workerSelector} onPress={() => setShowWorkerList(!showWorkerList)}>

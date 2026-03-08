@@ -4,7 +4,6 @@ import Constants from 'expo-constants';
 import {Platform} from 'react-native';
 import {supabase} from '@/libs/supabase';
 
-
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
@@ -27,44 +26,56 @@ export async function registerForPushNotificationsAsync() {
         });
     }
 
-    if (Device.isDevice) {
-        const {status: existingStatus} = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
+    if (!Device.isDevice) {
+        console.log('Las notificaciones push deben probarse en un dispositivo físico');
+        return;
+    }
 
-        if (existingStatus !== 'granted') {
-            const {status} = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-        }
+    const {status: existingStatus} = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+        const {status} = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+    }
+    if (finalStatus !== 'granted') {
+        console.log('Fallo al obtener el permiso para notificaciones push.');
+        return;
+    }
 
-        if (finalStatus !== 'granted') {
-            console.log('Fallo al obtener el permiso para notificaciones push.');
-            return;
-        }
+    const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+    if (!projectId) {
+        console.error('No se encontró el projectId. Asegúrate de tener configurado EAS.');
+        return;
+    }
 
-        const projectId =
-            Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-
-        try {
-            token = (
-                await Notifications.getExpoPushTokenAsync({
-                    projectId,
-                })
-            ).data;
-            console.log("Expo Push Token obtenido:", token);
-        } catch (e) {
-            console.log("Error obteniendo el token:", e);
-        }
-    } else {
-        console.log('Las notificaciones Push deben probarse en un dispositivo físico');
+    try {
+        token = (await Notifications.getExpoPushTokenAsync({projectId})).data;
+        console.log('Expo Push Token obtenido:', token);
+    } catch (e) {
+        console.log('Error obteniendo el token:', e);
+        return;
     }
 
     if (token) {
-        const {data: {user}} = await supabase.auth.getUser();
+        const {data: {user}, error: userError} = await supabase.auth.getUser();
+        if (userError) {
+            console.error('Error obteniendo el usuario:', userError);
+            return;
+        }
         if (user) {
-            await supabase
+            const {error} = await supabase
                 .from('profiles')
-                .update({expo_push_token: token})
+                .update({expo_token: token})
                 .eq('id', user.id);
+
+            if (error) {
+                console.error('Error guardando el token en Supabase:', error);
+            } else {
+                console.log('Token guardado exitosamente para el usuario:', user.id);
+            }
+        } else {
+            console.log('No hay usuario autenticado, no se guarda el token.');
         }
     }
 
