@@ -13,7 +13,7 @@ import {
 import {Ionicons} from '@expo/vector-icons'
 import {useRouter} from 'expo-router'
 import {supabase} from '@/libs/supabase'
-import {registerForPushNotificationsAsync} from '@/libs/notifications/notifications';
+//import {registerForPushNotificationsAsync} from '@/libs/notifications/notifications';
 import {ThemedView} from '@/components/themed-view'
 import {ThemedText} from '@/components/themed-text'
 
@@ -49,7 +49,7 @@ export default function Login() {
         }
         if (data.user) {
             console.log("Sesión iniciada, registrando token de notificaciones...");
-            await registerForPushNotificationsAsync();
+            //await registerForPushNotificationsAsync();
         }
         router.replace('/')
     }

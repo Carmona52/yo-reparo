@@ -8,11 +8,13 @@ import {
     ActivityIndicator,
     Linking,
     Image,
-    Platform
+    Platform,
+    Modal
 } from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ImageViewer from 'react-native-image-zoom-viewer';
 
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
@@ -30,6 +32,8 @@ export default function JobDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
     const [showWorkerList, setShowWorkerList] = useState(false);
+    const [imageViewerVisible, setImageViewerVisible] = useState(false);
+
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -85,8 +89,7 @@ export default function JobDetailScreen() {
         return colors[status.toLowerCase() as keyof typeof colors] || '#666';
     };
 
-    if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large"
-                                                                             color="#0a7ea4"/></ThemedView>;
+    if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large" color="#0a7ea4"/></ThemedView>;
     if (!job) return <ThemedView style={styles.center}><ThemedText>No disponible</ThemedText></ThemedView>;
 
     return (
@@ -104,17 +107,22 @@ export default function JobDetailScreen() {
 
                 <View style={styles.headerSection}>
                     <ThemedText type="title" style={styles.title}>{job.title}</ThemedText>
-
-                    <View style={styles.mainImageWrapper}>
-                        {job.image_url ? (
-                            <Image source={{uri: job.image_url}} style={styles.jobImage}/>
-                        ) : (
-                            <View style={styles.noImagePlaceholder}>
-                                <Ionicons name="image-outline" size={48} color="#ccc"/>
-                                <ThemedText style={{color: '#aaa'}}>Sin evidencia fotográfica</ThemedText>
-                            </View>
-                        )}
-                    </View>
+                    <TouchableOpacity
+                        style={styles.mainImageWrapper}
+                        onPress={() => job.image_url && setImageViewerVisible(true)}
+                        disabled={!job.image_url}
+                        activeOpacity={0.8}>
+                        <View style={styles.mainImageWrapper}>
+                            {job.image_url ? (
+                                <Image source={{uri: job.image_url}} style={styles.jobImage}/>
+                            ) : (
+                                <View style={styles.noImagePlaceholder}>
+                                    <Ionicons name="image-outline" size={48} color="#ccc"/>
+                                    <ThemedText style={{color: '#aaa'}}>Sin evidencia fotográfica</ThemedText>
+                                </View>
+                            )}
+                        </View>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.infoGrid}>
@@ -130,10 +138,8 @@ export default function JobDetailScreen() {
                     </View>
                 </View>
 
-                <TouchableOpacity
-                    style={styles.locationCard}
-                    onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`)}
-                >
+                <TouchableOpacity style={styles.locationCard}
+                                  onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`)}>
                     <View style={styles.iconCircle}>
                         <Ionicons name="location" size={22} color="#fff"/>
                     </View>
@@ -176,14 +182,12 @@ export default function JobDetailScreen() {
                     )}
                 </View>
 
-                {/* Descripción */}
                 <View style={styles.descSection}>
                     <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Detalles del Servicio</ThemedText>
                     <ThemedText
                         style={styles.descriptionText}>{job.description || "El cliente no proporcionó una descripción adicional."}</ThemedText>
                 </View>
 
-                {/* Acciones de Estado */}
                 <View style={styles.statusSection}>
                     <ThemedText style={styles.label}>Actualizar Estado</ThemedText>
                     <View style={styles.statusGrid}>
@@ -202,6 +206,23 @@ export default function JobDetailScreen() {
 
                 <View style={{height: 50}}/>
             </ScrollView>
+            <Modal visible={imageViewerVisible} transparent={true} onRequestClose={() => setImageViewerVisible(false)}>
+                <ImageViewer
+                    imageUrls={[{url: job?.image_url || ''}]}
+                    enableSwipeDown={true}
+                    onSwipeDown={() => setImageViewerVisible(false)}
+                    onCancel={() => setImageViewerVisible(false)}
+                    renderHeader={() => (
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => setImageViewerVisible(false)}
+                        >
+                            <Ionicons name="close" size={30} color="#fff"/>
+                        </TouchableOpacity>
+                    )}
+                    backgroundColor="rgba(0,0,0,0.9)"
+                />
+            </Modal>
 
             {updating && <View style={styles.loadingOverlay}><ActivityIndicator size="large" color="#fff"/></View>}
         </ThemedView>
@@ -346,5 +367,14 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 99
-    }
+    },
+    closeButton: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 50 : 30,
+        right: 20,
+        zIndex: 10,
+        padding: 10,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
 });
