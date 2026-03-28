@@ -26,10 +26,7 @@ export async function registerForPushNotificationsAsync() {
         });
     }
 
-    if (!Device.isDevice) {
-        console.log('Las notificaciones push deben probarse en un dispositivo físico');
-        return;
-    }
+
 
     const {status: existingStatus} = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -56,6 +53,8 @@ export async function registerForPushNotificationsAsync() {
         console.log('Error obteniendo el token:', e);
         return;
     }
+
+    console.log('este es tu token: ', token)
 
     if (token) {
         const {data: {user}, error: userError} = await supabase.auth.getUser();

@@ -83,8 +83,7 @@ export default function WorkersScreen() {
                         {item.phone && (
                             <TouchableOpacity
                                 style={styles.callButton}
-                                onPress={() => makeCall(item.phone)}
-                            >
+                                onPress={() => makeCall(item.phone)}>
                                 <Ionicons name="call" size={18} color="#fff"/>
                             </TouchableOpacity>
                         )}
@@ -167,7 +166,6 @@ const styles = StyleSheet.create({
         padding: 15,
         borderRadius: 20,
         marginBottom: 12,
-        // Sombra ligera
         elevation: 2,
         shadowColor: '#000',
         shadowOffset: {width: 0, height: 2},

@@ -6,7 +6,9 @@ import {
     View,
     ScrollView,
     KeyboardAvoidingView,
-    Platform
+    Platform,
+    ActivityIndicator,
+    Alert
 } from 'react-native';
 import {useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
@@ -14,10 +16,44 @@ import {Ionicons} from '@expo/vector-icons';
 import {ThemedText} from "@/components/themed-text";
 import {ThemedView} from "@/components/themed-view";
 
+import {createUser} from '@/libs/users/create-user';
+
 export default function RegisterScreen() {
     const router = useRouter();
-    const [role, setRole] = useState('user');
+
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [password, setPassword] = useState('');
+
+    const [role, setRole] = useState('cliente');
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleRegister = async () => {
+        if (!name || !email || !password || !phone) {
+            Alert.alert('Error', 'Por favor llena todos los campos.');
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            await createUser(email, password, name, phone, role);
+
+            Alert.alert(
+                '¡Registro exitoso!',
+                'Tu cuenta ha sido creada. Ahora puedes iniciar sesión.',
+                [{text: 'OK', onPress: () => router.replace('/(auth)/login')}]
+            );
+
+        } catch (error: any) {
+            Alert.alert('Error al registrar', error.message || 'Ocurrió un problema, intenta de nuevo.');
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <ThemedView style={styles.container}>
@@ -32,41 +68,69 @@ export default function RegisterScreen() {
                     </View>
 
                     <View style={styles.formCard}>
-                        <ThemedText style={styles.label}>¿Quién eres?</ThemedText>
-
                         <View style={styles.inputWrapper}>
                             <Ionicons name="person-outline" size={20} color="#888" style={styles.inputIcon}/>
                             <TextInput
                                 placeholder="Nombre completo"
+                                value={name}
+                                onChangeText={setName}
                                 style={styles.input}
-                                placeholderTextColor="#aaa"/>
+                                placeholderTextColor="#aaa"
+                            />
+                        </View>
+
+                        <View style={styles.inputWrapper}>
+                            <Ionicons name="call-outline" size={20} color="#888" style={styles.inputIcon}/>
+                            <TextInput
+                                placeholder="Teléfono"
+                                value={phone}
+                                onChangeText={setPhone}
+                                keyboardType="phone-pad"
+                                style={styles.input}
+                                placeholderTextColor="#aaa"
+                            />
                         </View>
 
                         <View style={styles.inputWrapper}>
                             <Ionicons name="mail-outline" size={20} color="#888" style={styles.inputIcon}/>
                             <TextInput
                                 placeholder="Correo electrónico"
+                                value={email}
+                                onChangeText={setEmail}
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 style={styles.input}
-                                placeholderTextColor="#aaa"/>
+                                placeholderTextColor="#aaa"
+                            />
                         </View>
 
                         <View style={styles.inputWrapper}>
                             <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.inputIcon}/>
                             <TextInput
                                 placeholder="Contraseña"
+                                value={password}
+                                onChangeText={setPassword}
                                 secureTextEntry={!showPassword}
                                 style={styles.input}
-                                placeholderTextColor="#aaa"/>
+                                placeholderTextColor="#aaa"
+                            />
                             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                                 <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20}
                                           color="#888"/>
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity style={styles.registerBtn} activeOpacity={0.8}>
-                            <ThemedText style={styles.registerBtnText}>Registrarme</ThemedText>
+                        <TouchableOpacity
+                            style={[styles.registerBtn, isLoading && {opacity: 0.7}]}
+                            activeOpacity={0.8}
+                            onPress={handleRegister}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <ActivityIndicator color="#fff"/>
+                            ) : (
+                                <ThemedText style={styles.registerBtnText}>Registrarme</ThemedText>
+                            )}
                         </TouchableOpacity>
                     </View>
 
@@ -86,15 +150,6 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
     container: {flex: 1},
     scroll: {padding: 24, paddingTop: 60},
-    backBtn: {
-        width: 45,
-        height: 45,
-        borderRadius: 22,
-        backgroundColor: 'rgba(150,150,150,0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 30
-    },
     welcomeSection: {marginBottom: 35},
     title: {fontSize: 32, fontWeight: '800', marginBottom: 10},
     subtitle: {fontSize: 16, opacity: 0.6, lineHeight: 22},
@@ -109,24 +164,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 15,
     },
-    label: {fontSize: 13, fontWeight: '700', textTransform: 'uppercase', opacity: 0.4, marginBottom: 12, marginLeft: 5},
-
-    roleContainer: {flexDirection: 'row', gap: 12, marginBottom: 25},
-    roleBtn: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingVertical: 14,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(10, 126, 164, 0.2)',
-        backgroundColor: 'rgba(10, 126, 164, 0.03)',
-    },
-    roleBtnActive: {backgroundColor: '#0a7ea4', borderColor: '#0a7ea4'},
-    roleText: {color: '#0a7ea4', fontWeight: 'bold'},
-    roleTextActive: {color: '#fff'},
 
     inputWrapper: {
         flexDirection: 'row',

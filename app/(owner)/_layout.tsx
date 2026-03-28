@@ -25,32 +25,6 @@ export default function OwnerLayout() {
                         <Ionicons name={focused ? "briefcase" : "briefcase-outline"} size={24} color={color}/>
                     ),
                 }}/>
-            <Tabs.Screen
-                name="jobs/[id]"
-                options={{
-                    href: null,
-                }}/>
-
-            <Tabs.Screen
-                name="workers/index"
-                options={{
-                    href: null,
-                }}/>
-            <Tabs.Screen
-                name="workers/[id]]"
-                options={{
-                    href: null,
-                }}/>
-
-            <Tabs.Screen
-                name="workers/[id]"
-                options={{
-                    href: null,
-                }}/><Tabs.Screen
-            name="contactos/[id]"
-            options={{
-                href: null,
-            }}/>
 
             <Tabs.Screen
                 name='contactos/index'
@@ -72,6 +46,39 @@ export default function OwnerLayout() {
 
             <Tabs.Screen
                 name="workers/create-worker"
+                options={{
+                    href: null,
+                }}/>
+
+            <Tabs.Screen
+                name="jobs/[id]"
+                options={{
+                    href: null,
+                }}/>
+
+            <Tabs.Screen
+                name="workers/index"
+                options={{
+                    href: null,
+                }}/>
+            <Tabs.Screen
+                name="workers/[id]]"
+                options={{
+                    href: null,
+                }}/>
+
+            <Tabs.Screen
+                name="workers/[id]"
+                options={{
+                    href: null,
+                }}/>
+            <Tabs.Screen
+            name="contactos/[id]"
+            options={{
+                href: null,
+            }}/>
+            <Tabs.Screen
+                name="workers/herramientas/[id]"
                 options={{
                     href: null,
                 }}/>

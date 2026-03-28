@@ -1,60 +1,74 @@
-import { useEffect } from 'react'
+import {useEffect} from 'react'
 import {ActivityIndicator, StyleSheet} from 'react-native'
-import { useRouter } from 'expo-router'
-import { supabase } from '@/libs/supabase'
+import {useRouter} from 'expo-router'
+import {supabase} from '@/libs/supabase'
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 
 export default function Index() {
-  const router = useRouter()
+    const router = useRouter()
 
-  useEffect(() => {
-    checkUser()
-  }, [])
+    useEffect(() => {
+        checkUser()
+    }, [])
 
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
+    const checkUser = async () => {
+        const {data: {session}} = await supabase.auth.getSession()
 
-    if (!session) {
-      router.replace('/(auth)/login')
-      return
+        if (!session) {
+            router.replace('/(auth)/login')
+            return
+        }
+
+        const {data: profile, error} = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single()
+
+        if (error) {
+            router.replace('/(auth)/login')
+            return
+        }
+
+        switch (profile?.role) {
+
+            case 'owner':
+                router.replace('/(owner)');
+                break;
+
+            case 'cliente':
+                router.replace('/(owner)');
+                break;
+
+            case 'worker':
+                router.replace('/(worker)');
+                break;
+
+
+            default:
+                router.replace('/(auth)/login');
+                break;
+        }
     }
 
-    const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single()
-
-    if (error) {
-      router.replace('/(auth)/login')
-      return
-    }
-
-    if (profile?.role === 'owner') {
-      router.replace('/(owner)')
-    } else {
-      router.replace('/(worker)')
-    }
-  }
-
-  return (
-      <ThemedView style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <ThemedText style={styles.text}>Cargando tu perfil...</ThemedText>
-      </ThemedView>
-  )
+    return (
+        <ThemedView style={styles.container}>
+            <ActivityIndicator size="large" color="#0000ff"/>
+            <ThemedText style={styles.text}>Cargando tu perfil...</ThemedText>
+        </ThemedView>
+    )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    text: {
+        marginTop: 10,
+        fontSize: 16,
+        color: '#666',
+    },
 })

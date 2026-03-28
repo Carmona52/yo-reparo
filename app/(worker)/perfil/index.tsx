@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Alert, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import {useState, useEffect} from 'react';
+import {StyleSheet, View, TouchableOpacity, Alert, ScrollView} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {Ionicons} from '@expo/vector-icons';
+import {useRouter} from 'expo-router';
 
-import { ThemedView } from "@/components/themed-view";
-import { ThemedText } from "@/components/themed-text";
-import { supabase } from "@/libs/supabase";
+import {ThemedView} from "@/components/themed-view";
+import {ThemedText} from "@/components/themed-text";
+import {supabase} from "@/libs/supabase";
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -19,10 +19,10 @@ export default function ProfileScreen() {
 
     async function getProfile() {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const {data: {user}} = await supabase.auth.getUser();
 
             if (user) {
-                const { data, error } = await supabase
+                const {data, error} = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', user.id)
@@ -40,7 +40,7 @@ export default function ProfileScreen() {
 
     async function handleSignOut() {
         Alert.alert("Cerrar Sesión", "¿Estás seguro de que quieres salir?", [
-            { text: "Cancelar", style: "cancel" },
+            {text: "Cancelar", style: "cancel"},
             {
                 text: "Salir",
                 style: "destructive",
@@ -61,15 +61,15 @@ export default function ProfileScreen() {
     }
 
     return (
-        <SafeAreaView style={{ flex: 1 }}>
+        <SafeAreaView style={{flex: 1}}>
             <ScrollView>
                 <ThemedView style={styles.container}>
                     <View style={styles.header}>
                         <View style={styles.avatarContainer}>
-                            <Ionicons name="person-circle" size={100} color="#0a7ea4" />
+                            <Ionicons name="person-circle" size={100} color="#0a7ea4"/>
                         </View>
                         <ThemedText type="title" style={styles.userName}>
-                            {profile?.name|| "Usuario"}
+                            {profile?.name || "Usuario"}
                         </ThemedText>
                         <View style={styles.badge}>
                             <ThemedText style={styles.badgeText}>
@@ -92,10 +92,16 @@ export default function ProfileScreen() {
                     </View>
 
                     <TouchableOpacity
+                        style={styles.toolsButton}
+                        onPress={() => router.push("/perfil/herramientas/page")}>
+                        <Ionicons name="hammer-outline" size={20} color="#fff"/>
+                        <ThemedText style={styles.toolsText}>Ver herramientas prestadas</ThemedText>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                         style={styles.signOutButton}
-                        onPress={handleSignOut}
-                    >
-                        <Ionicons name="log-out-outline" size={20} color="#ff4444" />
+                        onPress={handleSignOut}>
+                        <Ionicons name="log-out-outline" size={20} color="#ff4444"/>
                         <ThemedText style={styles.signOutText}>Cerrar Sesión</ThemedText>
                     </TouchableOpacity>
                 </ThemedView>
@@ -104,10 +110,10 @@ export default function ProfileScreen() {
     );
 }
 
-function ProfileItem({ icon, label, value }: { icon: any, label: string, value: string }) {
+function ProfileItem({icon, label, value}: { icon: any, label: string, value: string }) {
     return (
         <View style={styles.infoItem}>
-            <Ionicons name={icon} size={22} color="#0a7ea4" style={styles.infoIcon} />
+            <Ionicons name={icon} size={22} color="#0a7ea4" style={styles.infoIcon}/>
             <View>
                 <ThemedText style={styles.infoLabel}>{label}</ThemedText>
                 <ThemedText style={styles.infoValue}>{value}</ThemedText>
@@ -117,18 +123,18 @@ function ProfileItem({ icon, label, value }: { icon: any, label: string, value: 
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { alignItems: 'center', marginBottom: 30 },
-    avatarContainer: { marginBottom: 10 },
-    userName: { fontSize: 24, marginBottom: 5 },
+    container: {flex: 1, padding: 20},
+    center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
+    header: {alignItems: 'center', marginBottom: 30},
+    avatarContainer: {marginBottom: 10},
+    userName: {fontSize: 24, marginBottom: 5},
     badge: {
         backgroundColor: '#0a7ea4',
         paddingHorizontal: 12,
         paddingVertical: 4,
         borderRadius: 20,
     },
-    badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+    badgeText: {color: '#fff', fontSize: 12, fontWeight: 'bold'},
     infoSection: {
         backgroundColor: 'rgba(150, 150, 150, 0.05)',
         borderRadius: 15,
@@ -142,9 +148,9 @@ const styles = StyleSheet.create({
         borderBottomWidth: 0.5,
         borderBottomColor: 'rgba(150, 150, 150, 0.2)',
     },
-    infoIcon: { marginRight: 15 },
-    infoLabel: { fontSize: 12, opacity: 0.6 },
-    infoValue: { fontSize: 16, fontWeight: '500' },
+    infoIcon: {marginRight: 15},
+    infoLabel: {fontSize: 12, opacity: 0.6},
+    infoValue: {fontSize: 16, fontWeight: '500'},
     signOutButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -154,5 +160,25 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#ff4444',
     },
-    signOutText: { color: '#ff4444', fontWeight: 'bold', marginLeft: 10 },
+    signOutText: {color: '#ff4444', fontWeight: 'bold', marginLeft: 10},
+    toolsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#0a7ea4', // Color principal de tu app
+        padding: 15,
+        borderRadius: 12,
+        marginBottom: 15, // Espacio entre botones
+        shadowColor: "#000",
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    toolsText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        marginLeft: 10,
+        fontSize: 16
+    },
 });

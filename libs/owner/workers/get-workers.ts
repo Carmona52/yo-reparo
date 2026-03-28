@@ -3,7 +3,7 @@ import { supabase } from "@/libs/supabase";
 
 const WORKERS_CACHE_KEY = 'workers_list_cache';
 const WORKERS_CACHE_TIME_KEY = 'workers_list_timestamp';
-const CACHE_TTL = 1000 * 60 * 10; // 10 minutos para personal
+const CACHE_TTL = 1000 * 60 * 10;
 
 export async function getAllWorkers(forceRefresh = false) {
     if (!forceRefresh) {

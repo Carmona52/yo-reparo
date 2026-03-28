@@ -55,6 +55,14 @@ export default function JobsScreen() {
     }, []);
 
     const filteredJobs = useMemo(() => {
+
+        const priority: Record<string, number> = {
+            'en proceso': 1,
+            'pendiente': 2,
+            'finalizado': 3
+        };
+
+
         return jobs.filter(job => {
             const matchesSearch =
                 job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -65,6 +73,10 @@ export default function JobsScreen() {
                 job.status?.toLowerCase() === selectedStatus.toLowerCase();
 
             return matchesSearch && matchesStatus;
+        }).sort((a, b) => {
+            const priorityA = priority[a.status?.toLowerCase()] || 99;
+            const priorityB = priority[b.status?.toLowerCase()] || 99;
+            return priorityA - priorityB;
         });
     }, [jobs, searchQuery, selectedStatus]);
 

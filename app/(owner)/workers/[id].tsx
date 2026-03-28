@@ -7,32 +7,64 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {Worker} from '@/libs/types/worker';
+import {getToolsByWorkerId} from "@/libs/workers/tools";
+import {Tools} from "@/libs/types/tools";
+import AddToolModal from "@/components/modals/owner/create-tool";
+import EditWorkerModal from "@/components/modals/owner/edit-worker";
 
 export default function WorkerDetailScreen() {
     const {id} = useLocalSearchParams();
     const router = useRouter();
 
+    const [modalVisible, setModalVisible] = useState(false);
     const [worker, setWorker] = useState<Worker | null>(null);
     const [loading, setLoading] = useState(true);
+    const [tools, setTools] = useState<Tools[]>([]);
+    const [loadingTools, setLoadingTools] = useState(true);
+    const [editModalVisible, setEditModalVisible] = useState(false);
+
+
+    const loadWorker = async () => {
+        try {
+            const cachedWorkers = await AsyncStorage.getItem('workers_list_cache');
+            if (cachedWorkers) {
+                const list = JSON.parse(cachedWorkers);
+                const actualList = Array.isArray(list) ? list : (list.data || []);
+                const found = actualList.find((w: Worker) => String(w.id) === String(id));
+                setWorker(found || null);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadWorkerTools = async () => {
+        try {
+            setLoadingTools(true);
+            const data = await getToolsByWorkerId(String(id));
+            setTools(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingTools(false);
+        }
+    };
+
+    const handleEditSuccess = (updatedWorker: Worker) => {
+        setWorker(updatedWorker);
+    };
+
+    const refreshTools = () => {
+        loadWorkerTools();
+    };
 
     useEffect(() => {
-        const loadWorker = async () => {
-            try {
-                const cachedWorkers = await AsyncStorage.getItem('workers_list_cache');
-                if (cachedWorkers) {
-                    const list = JSON.parse(cachedWorkers);
-                    const actualList = Array.isArray(list) ? list : (list.data || []);
-                    const found = actualList.find((w: Worker) => String(w.id) === String(id));
-                    setWorker(found || null);
-                }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        };
         loadWorker();
+        loadWorkerTools();
     }, [id]);
+
 
     if (loading) return (
         <ThemedView style={styles.center}>
@@ -43,7 +75,7 @@ export default function WorkerDetailScreen() {
     if (!worker) return (
         <ThemedView style={styles.center}>
             <ThemedText>Trabajador no encontrado</ThemedText>
-            <TouchableOpacity onPress={() => router.back()} style={styles.errorBtn}>
+            <TouchableOpacity onPress={() => router.push('/(owner)/workers')} style={styles.errorBtn}>
                 <ThemedText style={{color: '#fff'}}>Regresar</ThemedText>
             </TouchableOpacity>
         </ThemedView>
@@ -56,7 +88,7 @@ export default function WorkerDetailScreen() {
                     <Ionicons name="chevron-back" size={24} color="#333"/>
                 </TouchableOpacity>
                 <ThemedText type="defaultSemiBold">Ficha del Personal</ThemedText>
-                <TouchableOpacity style={styles.iconBtn}>
+                <TouchableOpacity style={styles.iconBtn} onPress={()=> setEditModalVisible(true)}>
                     <Ionicons name="create-outline" size={22} color="#0a7ea4"/>
                 </TouchableOpacity>
             </View>
@@ -112,6 +144,48 @@ export default function WorkerDetailScreen() {
                 </View>
 
                 <View style={styles.infoCard}>
+                    <View style={styles.cardHeaderRow}>
+                        <ThemedText style={styles.cardLabel}>Herramientas Prestadas</ThemedText>
+                        <Ionicons name="hammer-outline" size={16} color="#0a7ea4"/>
+                    </View>
+
+                    {loadingTools ? (
+                        <ActivityIndicator size="small" color="#0a7ea4"/>
+                    ) : tools.length > 0 ? (
+                        tools.map((item) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                style={styles.toolItemRow}
+                                onPress={() => router.push({
+                                    pathname: "/(owner)/workers/herramientas/[id]",
+                                    params: {id: item.id, workerId: worker.id}
+                                })}
+                            >
+                                <View style={styles.toolDot}/>
+                                <View style={{flex: 1}}>
+                                    <ThemedText style={styles.toolNameText}>{item.tool}</ThemedText>
+                                    <ThemedText style={styles.toolDateText}>
+                                        Prestada el día: {new Date(item.created_at).toLocaleDateString()}
+                                    </ThemedText>
+                                </View>
+                                <Ionicons name="chevron-forward" size={18} color="rgba(150,150,150,0.5)"/>
+                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <ThemedText style={styles.emptyText}>Sin herramientas a cargo</ThemedText>
+                    )}
+
+                </View>
+
+                <ThemedView>
+                    <TouchableOpacity
+                        style={styles.assignBtn}
+                        onPress={() => setModalVisible(true)}>
+                        <Ionicons name="add" size={20} color="#0a7ea4"/>
+                        <ThemedText style={{color: '#0a7ea4', fontWeight: 'bold'}}>Prestar más herramientas</ThemedText>
+                    </TouchableOpacity>
+                </ThemedView>
+                <View style={styles.infoCard}>
                     <ThemedText style={styles.cardLabel}>Rendimiento y Status</ThemedText>
 
                     <View style={styles.statsGrid}>
@@ -130,11 +204,26 @@ export default function WorkerDetailScreen() {
                     </View>
                 </View>
 
-                <TouchableOpacity style={styles.deleteBtn}>
-                    <ThemedText style={{color: '#ff4444', fontWeight: 'bold'}}>Eliminar del equipo</ThemedText>
-                </TouchableOpacity>
+                {/*<TouchableOpacity style={styles.deleteBtn}>*/}
+                {/*    <ThemedText style={{color: '#ff4444', fontWeight: 'bold'}}>Eliminar del equipo</ThemedText>*/}
+                {/*</TouchableOpacity>*/}
+
 
             </ScrollView>
+
+            <AddToolModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                workerId={String(id)}
+                onSuccess={refreshTools}/>
+            {worker && (
+                <EditWorkerModal
+                    visible={editModalVisible}
+                    onClose={() => setEditModalVisible(false)}
+                    worker={worker}
+                    onSuccess={handleEditSuccess}
+                />
+            )}
         </ThemedView>
     );
 }
@@ -206,5 +295,54 @@ const styles = StyleSheet.create({
         marginTop: 10, marginBottom: 40,
         padding: 20, borderRadius: 20,
         alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255, 68, 68, 0.2)'
-    }
+    },
+    cardHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    toolItemRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(150,150,150,0.05)',
+    },
+    toolDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#0a7ea4',
+        marginRight: 12,
+    },
+    toolNameText: {
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    emptyText: {
+        fontSize: 14,
+        opacity: 0.4,
+        fontStyle: 'italic',
+        textAlign: 'center',
+        paddingVertical: 10,
+    },
+    toolDateText: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 2,
+    },
+    assignBtn: {
+        marginTop: 10,
+        marginBottom: 40,
+        padding: 20,
+        borderRadius: 20,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(10, 126, 164, 0.3)',
+        borderStyle: 'dashed',
+        gap: 8
+    },
 });

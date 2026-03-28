@@ -7,6 +7,35 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:1036482181760:android:e664a6cef8f19dd9294465",
+        "android_client_info": {
+          "package_name": "com.carmona52.yoreparo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1036482181760-hke8h90bsrvav0cu9q47ib3jv465h1l0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWzKO3DUQuhwcUfu7pzQjsXAjQAjhvs2c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1036482181760-hke8h90bsrvav0cu9q47ib3jv465h1l0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:1036482181760:android:bbf5c17d1661e2ab294465",
         "android_client_info": {
           "package_name": "com.yo_reparo"

@@ -2,8 +2,7 @@ import React, {useState, useEffect, useMemo} from "react";
 import {StyleSheet, TouchableOpacity, View, ScrollView, RefreshControl} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {useRouter} from "expo-router";
-import {Ionicons} from '@expo/vector-icons'; // Para las flechas
-
+import {Ionicons} from '@expo/vector-icons';
 import {ThemedText} from "@/components/themed-text";
 import {ThemedView} from "@/components/themed-view";
 import {getAllJobs} from "@/libs/owner/jobs/get-jobs";

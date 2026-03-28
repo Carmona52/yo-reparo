@@ -15,6 +15,7 @@ import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageViewer from 'react-native-image-zoom-viewer';
+
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {updateJob} from '@/libs/owner/jobs/update-jobs';
@@ -39,7 +40,7 @@ export default function JobDetailScreen() {
             if (!id) return;
             try {
                 const [cachedJobs, workersData] = await Promise.all([
-                    AsyncStorage.getItem('jobs_data_cache'),
+                    AsyncStorage.getItem('worker_jobs_cache'),
                     getAllWorkers()
                 ]);
 
@@ -81,7 +82,6 @@ export default function JobDetailScreen() {
     };
 
     const dateInfo = formatDate(job?.fecha_cita);
-    const assignedWorker = workers.find(w => w.id === job?.worker_id);
 
     const getStatusColor = (status: string) => {
         const colors = {'finalizado': '#10b981', 'en proceso': '#3b82f6', 'pendiente': '#f59e0b'};
@@ -94,7 +94,7 @@ export default function JobDetailScreen() {
     return (
         <ThemedView style={{flex: 1}}>
             <View style={styles.topBar}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                <TouchableOpacity style={styles.backBtn} onPress={() => router.push("/jobs")}>
                     <Ionicons name="chevron-back" size={24} color="#333"/>
                 </TouchableOpacity>
                 <View style={[styles.badge, {backgroundColor: getStatusColor(job.status)}]}>
@@ -148,38 +148,6 @@ export default function JobDetailScreen() {
                     </View>
                     <Ionicons name="navigate-circle" size={32} color="#10b981"/>
                 </TouchableOpacity>
-
-                <View style={styles.assignmentSection}>
-                    <ThemedText style={styles.label}>Responsable</ThemedText>
-                    <TouchableOpacity style={styles.workerSelector} onPress={() => setShowWorkerList(!showWorkerList)}>
-                        <View style={styles.workerInfoRow}>
-                            <View style={[styles.avatar, {backgroundColor: assignedWorker ? '#0a7ea4' : '#eee'}]}>
-                                <ThemedText style={styles.avatarLetter}>{assignedWorker?.name[0] || '?'}</ThemedText>
-                            </View>
-                            <View>
-                                <ThemedText type="defaultSemiBold" style={{fontSize: 16}}>
-                                    {assignedWorker ? assignedWorker.name : "Pendiente de asignar"}
-                                </ThemedText>
-                                <ThemedText style={{fontSize: 12, opacity: 0.5}}>Toca para cambiar</ThemedText>
-                            </View>
-                        </View>
-                        <Ionicons name={showWorkerList ? "chevron-up" : "chevron-down"} size={20} color="#0a7ea4"/>
-                    </TouchableOpacity>
-
-                    {showWorkerList && (
-                        <View style={styles.dropdown}>
-                            {workers.map(w => (
-                                <TouchableOpacity key={w.id} style={styles.workerOption}
-                                                  onPress={() => handleUpdate({worker_id: w.id})}>
-                                    <ThemedText
-                                        style={[styles.workerOptionText, job.worker_id === w.id && styles.activeText]}>{w.name}</ThemedText>
-                                    {job.worker_id === w.id &&
-                                        <Ionicons name="checkmark-circle" size={20} color="#0a7ea4"/>}
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
-                </View>
 
                 <View style={styles.descSection}>
                     <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Detalles del Servicio</ThemedText>

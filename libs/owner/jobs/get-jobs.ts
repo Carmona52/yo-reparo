@@ -3,7 +3,7 @@ import { supabase } from "@/libs/supabase";
 
 const CACHE_KEY = 'jobs_data_cache';
 const CACHE_TIME_KEY = 'jobs_data_timestamp';
-const CACHE_TTL = 1000 * 60 * 5; // 5 minutos en milisegundos
+const CACHE_TTL = 1000 * 60 * 5;
 
 export interface JobFilters {
     searchQuery?: string;
