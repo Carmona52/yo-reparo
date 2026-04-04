@@ -25,6 +25,14 @@ export default function OwnerLayout() {
                         <Ionicons name={focused ? "briefcase" : "briefcase-outline"} size={24} color={color}/>
                     ),
                 }}/>
+            <Tabs.Screen
+                name="cotizaciones/index"
+                options={{
+                    title: 'Cotizaciones',
+                    tabBarIcon: ({ color, focused }) => (
+                        <Ionicons name={focused ? "document-text" : "document-text-outline"} size={24} color={color} />
+                    ),
+                }}/>
 
             <Tabs.Screen
                 name='contactos/index'
@@ -73,12 +81,20 @@ export default function OwnerLayout() {
                     href: null,
                 }}/>
             <Tabs.Screen
-            name="contactos/[id]"
-            options={{
-                href: null,
-            }}/>
+                name="contactos/[id]"
+                options={{
+                    href: null,
+                }}/>
             <Tabs.Screen
                 name="workers/herramientas/[id]"
+                options={{
+                    href: null,
+                }}/>
+
+
+
+            <Tabs.Screen
+                name="cotizaciones/[id]"
                 options={{
                     href: null,
                 }}/>

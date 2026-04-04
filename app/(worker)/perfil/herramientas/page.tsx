@@ -1,12 +1,21 @@
-import { useEffect, useState, useCallback } from 'react'; // 1. Añadimos useCallback
-import { StyleSheet, FlatList, ActivityIndicator, View, RefreshControl } from 'react-native'; // 2. Importamos RefreshControl
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { getTools } from "@/libs/workers/tools";
-import { Tools } from "@/libs/types/tools";
+import {useEffect, useState, useCallback} from 'react';
+import {
+    StyleSheet, FlatList, ActivityIndicator, View,
+    RefreshControl, useColorScheme, Platform
+} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {Ionicons} from '@expo/vector-icons';
+import {useRouter} from 'expo-router';
+import {TouchableOpacity} from 'react-native';
+
+import {ThemedText} from "@/components/themed-text";
+import {ThemedView} from "@/components/themed-view";
+import {getTools} from "@/libs/workers/tools";
+import {Tools} from "@/libs/types/tools";
 
 export default function HerramientasPage() {
+    const router = useRouter();
+    const isDark = useColorScheme() === 'dark';
     const [tools, setTools] = useState<Tools[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -35,67 +44,113 @@ export default function HerramientasPage() {
     if (loading) {
         return (
             <ThemedView style={styles.center}>
-                <ActivityIndicator size="large" color="#0a7ea4" />
+                <ActivityIndicator size="large" color="#0a7ea4"/>
             </ThemedView>
         );
     }
 
     return (
-        <ThemedView style={styles.container}>
-            <ThemedText type="title" style={styles.title}>Herramientas prestadas</ThemedText>
+        <ThemedView style={{flex: 1}}>
+            <SafeAreaView style={{flex: 1}} edges={['top']}>
+                {/* Header con botón de regreso */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                        <Ionicons name="chevron-back" size={28} color={isDark ? "#fff" : "#333"}/>
+                    </TouchableOpacity>
+                    <ThemedText type="title" style={styles.title}>Mis Herramientas</ThemedText>
+                </View>
 
-            <FlatList
-                data={tools}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                    <View style={styles.toolCard}>
-                        <View style={styles.iconBadge}>
-                            <Ionicons name="construct-outline" size={24} color="#0a7ea4" />
+                <FlatList
+                    data={tools}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={styles.listContent}
+                    renderItem={({item}) => (
+                        <View style={[styles.toolCard, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff'}]}>
+                            <View style={styles.iconBadge}>
+                                <Ionicons name="hammer" size={22} color="#0a7ea4"/>
+                            </View>
+                            <View style={styles.toolInfo}>
+                                <ThemedText type="defaultSemiBold" style={styles.toolName}>{item.tool}</ThemedText>
+                                <View style={styles.dateRow}>
+                                    <Ionicons name="calendar-outline" size={12} color={isDark ? "#aaa" : "#666"}/>
+                                    <ThemedText style={styles.toolDate}>
+                                        Recibida: {new Date(item.created_at).toLocaleDateString('es-ES', {
+                                        day: 'numeric',
+                                        month: 'long'
+                                    })}
+                                    </ThemedText>
+                                </View>
+                            </View>
+                            <View style={styles.statusIndicator}>
+                                <View style={styles.dot}/>
+                                <ThemedText style={styles.statusText}>En uso</ThemedText>
+                            </View>
                         </View>
-                        <View style={styles.toolInfo}>
-                            <ThemedText style={styles.toolName}>{item.tool}</ThemedText>
-                            <ThemedText style={styles.toolDate}>
-                                Registrado: {new Date(item.created_at).toLocaleDateString()}
-                            </ThemedText>
+                    )}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            tintColor={'#0a7ea4'}
+                            colors={['#0a7ea4']}
+                        />
+                    }
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="hammer-outline" size={60} color="#ccc" style={{marginBottom: 15}}/>
+                            <ThemedText style={styles.emptyText}>No tienes herramientas asignadas en este
+                                momento.</ThemedText>
                         </View>
-                    </View>
-                )}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        colors={['#0a7ea4']}
-                        tintColor={'#0a7ea4'}
-                    />
-                }
-                ListEmptyComponent={
-                    <ThemedText style={styles.emptyText}>No tienes herramientas asignadas.</ThemedText>
-                }
-            />
+                    }
+                />
+            </SafeAreaView>
         </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    title: { marginBottom: 20, fontSize: 24 },
+    center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        gap: 10
+    },
+    backBtn: {width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start'},
+    title: {fontSize: 24, fontWeight: 'bold'},
+    listContent: {padding: 20, paddingBottom: 40},
     toolCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(150, 150, 150, 0.1)',
-        padding: 15,
-        borderRadius: 12,
-        marginBottom: 10,
+        padding: 16,
+        borderRadius: 20,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(150, 150, 150, 0.1)',
+        ...Platform.select({
+            ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.05, shadowRadius: 5},
+            android: {elevation: 2}
+        })
     },
     iconBadge: {
         backgroundColor: 'rgba(10, 126, 164, 0.1)',
-        padding: 10,
-        borderRadius: 10,
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
         marginRight: 15,
     },
-    toolInfo: { flex: 1 },
-    toolName: { fontSize: 16, fontWeight: 'bold' },
-    toolDate: { fontSize: 12, opacity: 0.6, marginTop: 4 },
-    emptyText: { textAlign: 'center', marginTop: 50, opacity: 0.5 }
+    toolInfo: {flex: 1},
+    toolName: {fontSize: 16, marginBottom: 4},
+    dateRow: {flexDirection: 'row', alignItems: 'center', gap: 5},
+    toolDate: {fontSize: 12, opacity: 0.5},
+
+    statusIndicator: {alignItems: 'flex-end', gap: 4},
+    dot: {width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981'},
+    statusText: {fontSize: 9, fontWeight: '800', color: '#10b981', textTransform: 'uppercase'},
+
+    emptyContainer: {alignItems: 'center', marginTop: 100, paddingHorizontal: 40},
+    emptyText: {textAlign: 'center', opacity: 0.4, fontSize: 14, lineHeight: 20}
 });

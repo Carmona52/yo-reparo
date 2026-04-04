@@ -88,9 +88,7 @@ export default function WorkerDetailScreen() {
                     <Ionicons name="chevron-back" size={24} color="#333"/>
                 </TouchableOpacity>
                 <ThemedText type="defaultSemiBold">Ficha del Personal</ThemedText>
-                <TouchableOpacity style={styles.iconBtn} onPress={()=> setEditModalVisible(true)}>
-                    <Ionicons name="create-outline" size={22} color="#0a7ea4"/>
-                </TouchableOpacity>
+
             </View>
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>

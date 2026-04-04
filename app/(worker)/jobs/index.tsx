@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import {useState, useEffect, useCallback, useMemo} from 'react';
 import {
     FlatList,
     RefreshControl,
@@ -7,15 +7,16 @@ import {
     TextInput,
     ScrollView,
     TouchableOpacity,
-    useColorScheme
+    useColorScheme,
+    Platform
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from "expo-router";
-import { ThemedView } from "@/components/themed-view";
-import { ThemedText } from "@/components/themed-text";
-import { getWorkerJobs } from "@/libs/workers/get-jobs";
-import { Job } from "@/libs/types/job";
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {Ionicons} from '@expo/vector-icons';
+import {useRouter} from "expo-router";
+import {ThemedView} from "@/components/themed-view";
+import {ThemedText} from "@/components/themed-text";
+import {getWorkerJobs} from "@/libs/workers/get-jobs";
+import {Job} from "@/libs/types/job";
 
 const STATUS_OPTIONS = ['Todos', 'en proceso', 'pendiente', 'finalizado'];
 
@@ -86,74 +87,83 @@ export default function JobsScreen() {
         return colors[status?.toLowerCase() as keyof typeof colors] || colors.default;
     };
 
-    const renderJobItem = ({ item }: { item: Job }) => (
+    const renderJobItem = ({item}: { item: Job }) => (
         <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => router.push({
                 pathname: "/jobs/[id]",
-                params: { id: item.id }
+                params: {id: item.id}
             } as any)}>
-            <ThemedView style={[styles.card, { backgroundColor: isDark ? '#1c1c1e' : '#f9f9f9' }]}>
+            <View style={[styles.card, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff'}]}>
                 <View style={styles.cardHeader}>
-                    <ThemedText type="defaultSemiBold" style={styles.jobTitle} numberOfLines={1}>
-                        {item.title}
-                    </ThemedText>
-                    <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
-                        <ThemedText style={styles.badgeText}>{item.status}</ThemedText>
+                    <View style={{flex: 1}}>
+                        <ThemedText type="defaultSemiBold" style={styles.jobTitle} numberOfLines={1}>
+                            {item.title}
+                        </ThemedText>
+                        <View style={styles.statusRow}>
+                            <View style={[styles.statusDot, {backgroundColor: getStatusColor(item.status)}]}/>
+                            <ThemedText style={styles.statusText}>{item.status}</ThemedText>
+                        </View>
                     </View>
+                    <Ionicons name="chevron-forward" size={18} color="#ccc"/>
                 </View>
 
-                <ThemedText style={styles.addressText} numberOfLines={2}>
-                    <Ionicons name="location-outline" size={14} /> {item.address}
+                <ThemedText style={styles.addressText} numberOfLines={1}>
+                    <Ionicons name="location" size={12} color="#0a7ea4"/> {item.address}
                 </ThemedText>
 
                 <View style={styles.cardFooter}>
                     <ThemedText style={styles.dateText}>
-                        {item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}
+                        Asignado el {item.created_at ? new Date(item.created_at).toLocaleDateString('es-ES', {
+                        day: 'numeric',
+                        month: 'short'
+                    }) : ''}
                     </ThemedText>
-                    <Ionicons name="chevron-forward" size={18} color="#0a7ea4" />
                 </View>
-            </ThemedView>
+            </View>
         </TouchableOpacity>
     );
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#000' : '#fff' }}>
-            <ThemedView style={{ flex: 1 }}>
+        <ThemedView style={{flex: 1}}>
+            <SafeAreaView style={{flex: 1}} edges={['top']}>
                 <FlatList
                     data={filteredJobs}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderJobItem}
                     contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
                     ListHeaderComponent={
                         <View style={styles.headerWrapper}>
                             <ThemedText type="title" style={styles.headerTitle}>Mis Trabajos</ThemedText>
 
-                            <View style={[styles.searchContainer, { backgroundColor: isDark ? '#1c1c1e' : '#f0f0f0' }]}>
-                                <Ionicons name="search" size={20} color="#8e8e93" style={styles.searchIcon} />
+                            <View style={[styles.searchContainer, {backgroundColor: isDark ? '#1c1c1e' : '#f0f2f5'}]}>
+                                <Ionicons name="search" size={18} color="#8e8e93"/>
                                 <TextInput
-                                    placeholder="Buscar por título o dirección..."
+                                    placeholder="Buscar trabajo..."
                                     placeholderTextColor="#8e8e93"
-                                    style={[styles.searchInput, { color: isDark ? '#fff' : '#000' }]}
+                                    style={[styles.searchInput, {color: isDark ? '#fff' : '#000'}]}
                                     value={searchQuery}
                                     onChangeText={setSearchQuery}
                                 />
                                 {searchQuery.length > 0 && (
                                     <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                        <Ionicons name="close-circle" size={20} color="#8e8e93" />
+                                        <Ionicons name="close-circle" size={18} color="#8e8e93"/>
                                     </TouchableOpacity>
                                 )}
                             </View>
 
                             <View style={styles.filterWrapper}>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                                            contentContainerStyle={{gap: 8}}>
                                     {STATUS_OPTIONS.map((status) => (
                                         <TouchableOpacity
                                             key={status}
                                             onPress={() => setSelectedStatus(status)}
                                             style={[
                                                 styles.filterChip,
-                                                selectedStatus === status && styles.filterChipActive
+                                                selectedStatus === status && styles.filterChipActive,
+                                                {backgroundColor: selectedStatus === status ? '#0a7ea4' : (isDark ? '#1c1c1e' : '#f0f2f5')}
                                             ]}>
                                             <ThemedText style={[
                                                 styles.filterText,
@@ -168,72 +178,79 @@ export default function JobsScreen() {
                         </View>
                     }
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4" />
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4"/>
                     }
                     ListEmptyComponent={
                         !loading ? (
                             <View style={styles.emptyContainer}>
-                                <Ionicons name="clipboard-outline" size={50} color="#ccc" />
+                                <Ionicons name="construct-outline" size={60} color={isDark ? "#333" : "#ccc"}/>
                                 <ThemedText style={styles.emptyText}>
                                     {searchQuery || selectedStatus !== 'Todos'
-                                        ? "Sin resultados para los filtros aplicados."
-                                        : "Aún no tienes trabajos asignados."}
+                                        ? "No hay trabajos que coincidan con tu búsqueda."
+                                        : "No tienes trabajos asignados en este momento."}
                                 </ThemedText>
                             </View>
                         ) : null
                     }
                 />
-            </ThemedView>
-        </SafeAreaView>
+            </SafeAreaView>
+        </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
-    headerWrapper: { paddingHorizontal: 16 },
-    headerTitle: { marginTop: 15, marginBottom: 15, fontSize: 28 },
+    headerWrapper: {paddingHorizontal: 20, paddingTop: 10},
+    headerTitle: {marginBottom: 15, fontSize: 28},
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 15,
+        borderRadius: 14,
         paddingHorizontal: 12,
-        height: 50,
+        height: 48,
         marginBottom: 15,
+        gap: 8
     },
-    searchIcon: { marginRight: 10 },
-    searchInput: { flex: 1, fontSize: 16 },
-    filterWrapper: { marginBottom: 20 },
+    searchInput: {flex: 1, fontSize: 15},
+    filterWrapper: {marginBottom: 20},
     filterChip: {
-        paddingHorizontal: 18,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: 'rgba(150, 150, 150, 0.1)',
-        marginRight: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 10,
     },
-    filterChipActive: { backgroundColor: '#0a7ea4' },
-    filterText: { fontSize: 14, fontWeight: '500', opacity: 0.7 },
-    filterTextActive: { color: '#fff', opacity: 1 },
-    listContent: { paddingBottom: 40, paddingHorizontal: 16 },
+    filterChipActive: {
+        shadowColor: '#0a7ea4',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3
+    },
+    filterText: {fontSize: 13, fontWeight: '600', opacity: 0.6},
+    filterTextActive: {color: '#fff', opacity: 1},
+    listContent: {paddingBottom: 40},
     card: {
+        marginHorizontal: 20,
         padding: 16,
         borderRadius: 20,
-        marginBottom: 15,
+        marginBottom: 12,
         borderWidth: 1,
         borderColor: 'rgba(150, 150, 150, 0.1)',
+        ...Platform.select({
+            ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.05, shadowRadius: 8},
+            android: {elevation: 2}
+        })
     },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    jobTitle: { fontSize: 17, flex: 1, fontWeight: '700' },
-    badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-    badgeText: { color: '#fff', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
-    addressText: { opacity: 0.6, fontSize: 13, marginBottom: 12 },
+    cardHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10},
+    jobTitle: {fontSize: 18, fontWeight: '700', marginBottom: 4},
+    statusRow: {flexDirection: 'row', alignItems: 'center', gap: 6},
+    statusDot: {width: 8, height: 8, borderRadius: 4},
+    statusText: {fontSize: 12, fontWeight: '700', textTransform: 'uppercase', opacity: 0.8},
+    addressText: {opacity: 0.5, fontSize: 13, marginBottom: 12},
     cardFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         borderTopWidth: 1,
-        borderTopColor: 'rgba(150,150,150,0.1)',
+        borderTopColor: 'rgba(150,150,150,0.08)',
         paddingTop: 10
     },
-    dateText: { fontSize: 12, opacity: 0.5 },
-    emptyContainer: { alignItems: 'center', marginTop: 60 },
-    emptyText: { textAlign: 'center', marginTop: 15, opacity: 0.5, maxWidth: '80%' },
+    dateText: {fontSize: 11, opacity: 0.4, fontWeight: '600'},
+    emptyContainer: {alignItems: 'center', marginTop: 80, paddingHorizontal: 40},
+    emptyText: {textAlign: 'center', marginTop: 15, opacity: 0.4, fontSize: 15, lineHeight: 22},
 });

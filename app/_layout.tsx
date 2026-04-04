@@ -15,6 +15,8 @@ export default function RootLayout() {
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(owner)" options={{ headerShown: false }} />
                 <Stack.Screen name="(worker)" options={{ headerShown: false }} />
+                <Stack.Screen name="(cliente)" options={{ headerShown: false }} />
+
             </Stack>
             <StatusBar style="auto" />
         </ThemeProvider>

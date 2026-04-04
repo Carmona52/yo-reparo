@@ -43,7 +43,7 @@ export default function RegisterScreen() {
 
             Alert.alert(
                 '¡Registro exitoso!',
-                'Tu cuenta ha sido creada. Ahora puedes iniciar sesión.',
+                'Tu cuenta ha sido creada. Por favor, verifica tu correo y confirma tu cuenta para poder iniciar sesión',
                 [{text: 'OK', onPress: () => router.replace('/(auth)/login')}]
             );
 

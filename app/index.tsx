@@ -38,7 +38,7 @@ export default function Index() {
                 break;
 
             case 'cliente':
-                router.replace('/(owner)');
+                router.replace('/(cliente)' as any);
                 break;
 
             case 'worker':

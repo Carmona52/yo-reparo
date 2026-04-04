@@ -8,16 +8,19 @@ import {
     TouchableOpacity,
     TextInput,
     ScrollView,
-    useColorScheme
+    useColorScheme,
+    Platform,
+    ActivityIndicator
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Ionicons} from '@expo/vector-icons';
+import {useRouter} from "expo-router";
+
 import {CreateContactModal} from "@/components/modals/owner/create-contact";
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {getAllContacts} from "@/libs/owner/contacts/get-contacts";
 import {Contact} from "@/libs/types/contact";
-import {useRouter} from "expo-router";
 
 export default function ContactsScreen() {
     const router = useRouter();
@@ -77,7 +80,7 @@ export default function ContactsScreen() {
                 } as any);
             }}
         >
-            <ThemedView style={styles.card}>
+            <View style={[styles.card, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff'}]}>
                 <View style={styles.cardHeader}>
                     <View style={styles.avatar}>
                         <ThemedText style={styles.avatarText}>
@@ -89,37 +92,52 @@ export default function ContactsScreen() {
                             {item.name}
                         </ThemedText>
                         <ThemedText style={styles.addressText} numberOfLines={1}>
-                            {item.neighborhood || 'Sin colonia'} • {item.address_line_1}
+                            <Ionicons name="location" size={10} color="#0a7ea4"/> {item.neighborhood || 'Sin colonia'}
                         </ThemedText>
                     </View>
-                    <TouchableOpacity style={styles.callButton} onPress={() => makeCall(item.phone)}>
-                        <Ionicons name="call" size={20} color="#fff"/>
+                    <TouchableOpacity
+                        style={styles.callButton}
+                        onPress={() => makeCall(item.phone)}
+                        activeOpacity={0.6}
+                    >
+                        <Ionicons name="call" size={18} color="#fff"/>
                     </TouchableOpacity>
                 </View>
-            </ThemedView>
+            </View>
         </TouchableOpacity>
     );
 
     return (
-        <SafeAreaView style={{flex: 1}}>
-            <ThemedView style={styles.container}>
-                <ThemedText type="title" style={styles.headerTitle}>Directorio de Clientes</ThemedText>
+        <ThemedView style={{flex: 1}}>
+            <SafeAreaView style={{flex: 1}} edges={['top']}>
+                {/* Header Section */}
+                <View style={styles.header}>
+                    <ThemedText type="title" style={styles.headerTitle}>Clientes</ThemedText>
 
-                <View
-                    style={[styles.searchContainer, {backgroundColor: isDark ? '#1c1c1e' : 'rgba(150, 150, 150, 0.1)'}]}>
-                    <Ionicons name="search" size={20} color="#8e8e93" style={{marginRight: 10}}/>
-                    <TextInput
-                        placeholder="Buscar por nombre..."
-                        placeholderTextColor="#8e8e93"
-                        style={[styles.searchInput, {color: isDark ? '#fff' : '#000'}]}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
+                    <View style={[styles.searchContainer, {backgroundColor: isDark ? '#1c1c1e' : '#f0f2f5'}]}>
+                        <Ionicons name="search" size={18} color="#8e8e93"/>
+                        <TextInput
+                            placeholder="Buscar por nombre..."
+                            placeholderTextColor="#8e8e93"
+                            style={[styles.searchInput, {color: isDark ? '#fff' : '#000'}]}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Ionicons name="close-circle" size={18} color="#8e8e93"/>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
 
-                {/* Chips de Colonia */}
-                <View style={{marginBottom: 15}}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {/* Filtros de Colonias */}
+                <View style={styles.filterWrapper}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.filterContainer}
+                    >
                         {neighborhoods.map(nb => (
                             <TouchableOpacity
                                 key={nb}
@@ -136,97 +154,126 @@ export default function ContactsScreen() {
                 </View>
 
                 <FlatList
-
                     data={filteredContacts}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderContactItem}
                     contentContainerStyle={styles.listContent}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4"/>}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4"/>
+                    }
                     ListEmptyComponent={
-                        !loading ? <ThemedText style={styles.emptyText}>No se encontraron contactos.</ThemedText> : null
+                        !loading ? (
+                            <View style={styles.emptyContainer}>
+                                <Ionicons name="people-outline" size={60} color={isDark ? "#333" : "#ccc"}/>
+                                <ThemedText style={styles.emptyText}>No se encontraron clientes en esta
+                                    zona.</ThemedText>
+                            </View>
+                        ) : (
+                            <ActivityIndicator size="small" color="#0a7ea4" style={{marginTop: 20}}/>
+                        )
                     }
                 />
-                <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-                    <Ionicons name="add" size={30} color="#fff"/>
+
+                <TouchableOpacity
+                    style={styles.fab}
+                    onPress={() => setModalVisible(true)}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="person-add" size={26} color="#fff"/>
                 </TouchableOpacity>
+
                 <CreateContactModal
                     visible={modalVisible}
                     onClose={() => setModalVisible(false)}
                     onSuccess={() => fetchData(true)}
                 />
-            </ThemedView>
-        </SafeAreaView>
+            </SafeAreaView>
+        </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {flex: 1, paddingHorizontal: 16},
-    headerTitle: {marginTop: 15, marginBottom: 15, fontSize: 30},
+    header: {paddingHorizontal: 20, paddingTop: 10},
+    headerTitle: {fontSize: 28, marginBottom: 15},
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 12,
-        height: 48,
+        height: 46,
         borderRadius: 12,
-        marginBottom: 15
+        marginBottom: 10,
+        gap: 10
     },
-    searchInput: {flex: 1, fontSize: 16},
+    searchInput: {flex: 1, fontSize: 15},
+
+    filterWrapper: {paddingVertical: 10},
+    filterContainer: {paddingHorizontal: 20, gap: 8},
     filterChip: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 10,
         backgroundColor: 'rgba(150, 150, 150, 0.1)',
-        marginRight: 8
     },
     activeChip: {backgroundColor: '#0a7ea4'},
-    filterText: {fontSize: 13, opacity: 0.8},
-    activeFilterText: {color: '#fff', fontWeight: 'bold'},
-    listContent: {paddingBottom: 20},
+    filterText: {fontSize: 13, opacity: 0.6, fontWeight: '600'},
+    activeFilterText: {color: '#fff', opacity: 1},
+
+    listContent: {padding: 20, paddingBottom: 100},
     card: {
-        padding: 12,
-        borderRadius: 16,
-        marginBottom: 10,
-        backgroundColor: 'rgba(150, 150, 150, 0.08)',
+        padding: 15,
+        borderRadius: 20,
+        marginBottom: 12,
         borderWidth: 1,
-        borderColor: 'rgba(150, 150, 150, 0.1)'
+        borderColor: 'rgba(150, 150, 150, 0.1)',
+        ...Platform.select({
+            ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.05, shadowRadius: 8},
+            android: {elevation: 2}
+        })
     },
     cardHeader: {flexDirection: 'row', alignItems: 'center'},
     avatar: {
-        width: 45,
-        height: 45,
-        borderRadius: 22.5,
-        backgroundColor: '#0a7ea4',
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        backgroundColor: 'rgba(10, 126, 164, 0.15)',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12
+        marginRight: 15
     },
-    avatarText: {color: '#fff', fontWeight: 'bold', fontSize: 16},
+    avatarText: {color: '#0a7ea4', fontWeight: 'bold', fontSize: 16},
     infoContainer: {flex: 1},
-    nameText: {fontSize: 16},
-    addressText: {fontSize: 12, opacity: 0.6, marginTop: 2},
+    nameText: {fontSize: 17, marginBottom: 2},
+    addressText: {fontSize: 13, opacity: 0.5},
     callButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 42,
+        height: 42,
+        borderRadius: 14,
         backgroundColor: '#10b981',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        shadowColor: '#10b981',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
-    emptyText: {textAlign: 'center', marginTop: 40, opacity: 0.5},
+    emptyContainer: {alignItems: 'center', marginTop: 80, opacity: 0.8},
+    emptyText: {textAlign: 'center', marginTop: 15, opacity: 0.5, fontSize: 14},
+
     fab: {
         position: 'absolute',
         bottom: 30,
-        right: 20,
-        width: 65,
-        height: 65,
-        borderRadius: 20,
+        right: 25,
+        width: 60,
+        height: 60,
+        borderRadius: 18,
         backgroundColor: '#0a7ea4',
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 8,
-        shadowColor: '#000',
+        shadowColor: '#0a7ea4',
         shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.3,
-        shadowRadius: 5,
+        shadowRadius: 6,
+        elevation: 5,
     }
 });

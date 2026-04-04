@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     StyleSheet,
     View,
@@ -74,11 +74,13 @@ export default function ProfileScreen() {
     }
 
     return (
-        <SafeAreaView style={{flex: 1}}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-                <ThemedView style={styles.container}>
+        <ThemedView style={{flex: 1}}>
+            <SafeAreaView style={{flex: 1}} edges={['top']}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+
+                    {/* Header con Avatar */}
                     <View style={styles.header}>
-                        <View style={[styles.avatarContainer, {backgroundColor: isDark ? '#1c1c1e' : '#f0f0f0'}]}>
+                        <View style={[styles.avatarContainer, {backgroundColor: isDark ? '#2c2c2e' : '#f0f0f0'}]}>
                             <Ionicons name="person" size={50} color="#0a7ea4"/>
                         </View>
                         <ThemedText type="title" style={styles.userName}>
@@ -92,11 +94,12 @@ export default function ProfileScreen() {
                         </View>
                     </View>
 
-                    <ThemedText style={styles.sectionTitle}>Información</ThemedText>
+                    {/* Sección de Información */}
+                    <ThemedText style={styles.sectionTitle}>Información Personal</ThemedText>
                     <View style={[styles.card, {backgroundColor: isDark ? '#1c1c1e' : '#f9f9f9'}]}>
                         <ProfileItem
                             icon="mail-outline"
-                            label="Correo"
+                            label="Correo Electrónico"
                             value={profile?.email || "No disponible"}
                             isDark={isDark}/>
                         <ProfileItem
@@ -112,9 +115,10 @@ export default function ProfileScreen() {
                             isLast/>
                     </View>
 
+                    {/* Sección Administrativa (Solo Owner) */}
                     {profile?.role === 'owner' && (
                         <>
-                            <ThemedText style={styles.sectionTitle}>Panel de Control</ThemedText>
+                            <ThemedText style={styles.sectionTitle}>Administración</ThemedText>
                             <TouchableOpacity
                                 style={[styles.actionCard, {backgroundColor: isDark ? '#1c1c1e' : '#f9f9f9'}]}
                                 activeOpacity={0.7}
@@ -128,7 +132,7 @@ export default function ProfileScreen() {
                                         Gestionar Trabajadores
                                     </ThemedText>
                                     <ThemedText style={{opacity: 0.5, fontSize: 13}}>
-                                        Altas, bajas y edición de personal
+                                        Altas, bajas y edición
                                     </ThemedText>
                                 </View>
                                 <Ionicons name="chevron-forward" size={20} color="#ccc"/>
@@ -136,6 +140,7 @@ export default function ProfileScreen() {
                         </>
                     )}
 
+                    {/* Botón de Cerrar Sesión */}
                     <TouchableOpacity
                         style={styles.signOutButton}
                         activeOpacity={0.8}
@@ -145,36 +150,34 @@ export default function ProfileScreen() {
                         <ThemedText style={styles.signOutText}>Cerrar Sesión</ThemedText>
                     </TouchableOpacity>
 
-                    <ThemedText style={styles.versionText}>Versión 1.0.0</ThemedText>
-                    <View style={{height: 40}}/>
-                </ThemedView>
-            </ScrollView>
-        </SafeAreaView>
+                    <ThemedText style={styles.versionText}>Yo Reparo • v1.0.0</ThemedText>
+                </ScrollView>
+            </SafeAreaView>
+        </ThemedView>
     );
 }
 
 function ProfileItem({icon, label, value, isDark, isLast}: any) {
     return (
-        <View style={[styles.infoItem, !isLast && {
-            borderBottomWidth: 1,
-            borderBottomColor: isDark ? '#2c2c2e' : '#eee'
-        }]}>
+        <View style={[
+            styles.infoItem,
+            !isLast && {borderBottomWidth: 1, borderBottomColor: isDark ? '#2c2c2e' : '#eee'}
+        ]}>
             <View style={styles.infoIconBg}>
                 <Ionicons name={icon} size={20} color="#0a7ea4"/>
             </View>
-            <View>
+            <View style={{flex: 1}}>
                 <ThemedText style={styles.infoLabel}>{label}</ThemedText>
-                <ThemedText style={styles.infoValue}>{value}</ThemedText>
+                <ThemedText style={styles.infoValue} numberOfLines={1}>{value}</ThemedText>
             </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {flex: 1, padding: 24},
     center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
-
-    header: {alignItems: 'center', marginBottom: 35, marginTop: 10},
+    scrollContent: {padding: 24, paddingBottom: 60},
+    header: {alignItems: 'center', marginBottom: 35},
     avatarContainer: {
         width: 100,
         height: 100,
@@ -187,58 +190,46 @@ const styles = StyleSheet.create({
             android: {elevation: 4}
         })
     },
-    userName: {fontSize: 26, fontWeight: 'bold', marginBottom: 8},
-    roleBadge: {
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    roleBadgeText: {color: '#fff', fontSize: 11, fontWeight: 'bold', letterSpacing: 1},
+    userName: {fontSize: 24, fontWeight: 'bold', marginBottom: 8, textAlign: 'center'},
+    roleBadge: {paddingHorizontal: 14, paddingVertical: 4, borderRadius: 20},
+    roleBadgeText: {color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1},
 
     sectionTitle: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: 'bold',
-        opacity: 0.4,
+        opacity: 0.5,
         textTransform: 'uppercase',
         marginBottom: 12,
         marginLeft: 4,
-        letterSpacing: 1
+        letterSpacing: 0.5
     },
 
-    card: {
-        borderRadius: 24,
-        padding: 8,
-        marginBottom: 25,
-    },
-    infoItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 14,
-    },
+    card: {borderRadius: 20, overflow: 'hidden', marginBottom: 25},
+    infoItem: {flexDirection: 'row', alignItems: 'center', padding: 16},
     infoIconBg: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(10, 126, 164, 0.1)',
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: 'rgba(10, 126, 164, 0.08)',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 15
     },
-    infoLabel: {fontSize: 11, opacity: 0.5, textTransform: 'uppercase', marginBottom: 2},
+    infoLabel: {fontSize: 10, opacity: 0.5, textTransform: 'uppercase', marginBottom: 2},
     infoValue: {fontSize: 15, fontWeight: '500'},
 
     actionCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 20,
-        borderRadius: 24,
-        marginBottom: 35,
+        padding: 18,
+        borderRadius: 20,
+        marginBottom: 25,
     },
     actionIconBg: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
-        backgroundColor: 'rgba(10, 126, 164, 0.1)',
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: 'rgba(10, 126, 164, 0.08)',
         justifyContent: 'center',
         alignItems: 'center'
     },
@@ -247,18 +238,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 18,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 68, 68, 0.08)',
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255, 68, 68, 0.06)',
         borderWidth: 1,
-        borderColor: 'rgba(255, 68, 68, 0.2)',
+        borderColor: 'rgba(255, 68, 68, 0.15)',
+        marginTop: 10
     },
-    signOutText: {color: '#ff4444', fontWeight: 'bold', marginLeft: 10, fontSize: 16},
+    signOutText: {color: '#ff4444', fontWeight: 'bold', marginLeft: 10, fontSize: 15},
 
-    versionText: {
-        textAlign: 'center',
-        marginTop: 25,
-        fontSize: 12,
-        opacity: 0.3
-    }
+    versionText: {textAlign: 'center', marginTop: 30, fontSize: 11, opacity: 0.3}
 });

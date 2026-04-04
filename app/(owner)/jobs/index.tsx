@@ -7,7 +7,8 @@ import {
     TextInput,
     ScrollView,
     TouchableOpacity,
-    useColorScheme
+    useColorScheme,
+    Platform, ActivityIndicator
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Ionicons} from '@expo/vector-icons';
@@ -55,13 +56,11 @@ export default function JobsScreen() {
     }, []);
 
     const filteredJobs = useMemo(() => {
-
         const priority: Record<string, number> = {
             'en proceso': 1,
             'pendiente': 2,
             'finalizado': 3
         };
-
 
         return jobs.filter(job => {
             const matchesSearch =
@@ -100,7 +99,10 @@ export default function JobsScreen() {
                 pathname: "/jobs/[id]",
                 params: {id: item.id}
             } as any)}>
-            <ThemedView style={[styles.card, {backgroundColor: isDark ? '#1c1c1e' : '#f9f9f9'}]}>
+            <View style={[
+                styles.card,
+                {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff'}
+            ]}>
                 <View style={styles.cardHeader}>
                     <ThemedText type="defaultSemiBold" style={styles.jobTitle} numberOfLines={1}>
                         {item.title}
@@ -110,37 +112,52 @@ export default function JobsScreen() {
                     </View>
                 </View>
 
-                <ThemedText style={styles.addressText} numberOfLines={2}>
-                    <Ionicons name="location-outline" size={14}/> {item.address}
-                </ThemedText>
-            </ThemedView>
+                <View style={styles.addressRow}>
+                    <Ionicons name="location-outline" size={14} color={isDark ? "#aaa" : "#666"}/>
+                    <ThemedText style={styles.addressText} numberOfLines={1}>
+                        {item.address}
+                    </ThemedText>
+                </View>
+
+                <View style={styles.cardFooter}>
+                    <ThemedText style={styles.footerInfo}>Ver detalles</ThemedText>
+                    <Ionicons name="arrow-forward" size={14} color="#0a7ea4"/>
+                </View>
+            </View>
         </TouchableOpacity>
     );
 
     return (
-        <SafeAreaView style={{flex: 1}}>
-            <ThemedView style={styles.container}>
-                <ThemedText type="title" style={styles.headerTitle}>Trabajos</ThemedText>
+        <ThemedView style={{flex: 1}}>
+            <SafeAreaView style={{flex: 1}} edges={['top']}>
+                {/* Header Fijo */}
+                <View style={styles.header}>
+                    <ThemedText type="title" style={styles.headerTitle}>Trabajos</ThemedText>
 
-                <View style={[styles.searchContainer, {backgroundColor: isDark ? '#1c1c1e' : '#f0f0f0'}]}>
-                    <Ionicons name="search" size={20} color="#8e8e93" style={styles.searchIcon}/>
-                    <TextInput
-                        placeholder="Buscar trabajo o dirección..."
-                        placeholderTextColor="#8e8e93"
-                        style={[styles.searchInput, {color: isDark ? '#fff' : '#000'}]}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Ionicons name="close-circle" size={20} color="#8e8e93"/>
-                        </TouchableOpacity>
-                    )}
+                    <View style={[styles.searchContainer, {backgroundColor: isDark ? '#1c1c1e' : '#f0f2f5'}]}>
+                        <Ionicons name="search" size={18} color="#8e8e93"/>
+                        <TextInput
+                            placeholder="Buscar por nombre o dirección..."
+                            placeholderTextColor="#8e8e93"
+                            style={[styles.searchInput, {color: isDark ? '#fff' : '#000'}]}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Ionicons name="close-circle" size={18} color="#8e8e93"/>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
 
+                {/* Filtros Horizontales */}
                 <View style={styles.filterWrapper}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.filterContainer}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.filterContainer}
+                    >
                         {STATUS_OPTIONS.map((status) => (
                             <TouchableOpacity
                                 key={status}
@@ -152,14 +169,15 @@ export default function JobsScreen() {
                                 <ThemedText style={[
                                     styles.filterText,
                                     selectedStatus === status && styles.filterTextActive,
-                                    {textTransform: 'capitalize'}]}>
-                                    {status}
+                                ]}>
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
                                 </ThemedText>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
                 </View>
 
+                {/* Lista Principal */}
                 <FlatList
                     data={filteredJobs}
                     keyExtractor={(item) => item.id.toString()}
@@ -167,25 +185,33 @@ export default function JobsScreen() {
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4"/>
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            tintColor="#0a7ea4"
+                        />
                     }
                     ListEmptyComponent={
                         !loading ? (
                             <View style={styles.emptyContainer}>
-                                <Ionicons name="clipboard-outline" size={50} color="#ccc"/>
+                                <Ionicons name="clipboard-outline" size={60} color={isDark ? "#333" : "#ccc"}/>
                                 <ThemedText style={styles.emptyText}>
                                     {searchQuery || selectedStatus !== 'Todos'
-                                        ? "No hay resultados para este filtro."
-                                        : "No tienes trabajos asignados."}
+                                        ? "No hay resultados para esta búsqueda."
+                                        : "No hay trabajos registrados."}
                                 </ThemedText>
                             </View>
-                        ) : null
-                    }/>
+                        ) : (
+                            <ActivityIndicator size="small" color="#0a7ea4" style={{marginTop: 20}}/>
+                        )
+                    }
+                />
 
                 <CreateJobModal
                     visible={isModalVisible}
                     onClose={() => setModalVisible(false)}
-                    onSuccess={() => fetchData(true)}/>
+                    onSuccess={() => fetchData(true)}
+                />
 
                 <TouchableOpacity
                     style={styles.fab}
@@ -194,79 +220,83 @@ export default function JobsScreen() {
                 >
                     <Ionicons name="add" size={30} color="#fff"/>
                 </TouchableOpacity>
-            </ThemedView>
-        </SafeAreaView>
+            </SafeAreaView>
+        </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {flex: 1, paddingHorizontal: 16},
-    headerTitle: {marginTop: 15, marginBottom: 15, fontSize: 30},
-
+    header: {paddingHorizontal: 20, paddingTop: 10},
+    headerTitle: {fontSize: 28, marginBottom: 15},
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 15,
-        paddingHorizontal: 12,
-        height: 50,
-        marginBottom: 15,
-    },
-    searchIcon: {marginRight: 10},
-    searchInput: {flex: 1, fontSize: 16},
-
-    filterWrapper: {marginBottom: 20},
-    filterContainer: {paddingRight: 20},
-    filterChip: {
-        paddingHorizontal: 18,
-        paddingVertical: 10,
         borderRadius: 12,
+        paddingHorizontal: 12,
+        height: 46,
+        marginBottom: 10,
+        gap: 10
+    },
+    searchInput: {flex: 1, fontSize: 15},
+
+    filterWrapper: {paddingVertical: 10},
+    filterContainer: {paddingHorizontal: 20, gap: 10},
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 10,
         backgroundColor: 'rgba(150, 150, 150, 0.1)',
-        marginRight: 10,
     },
     filterChipActive: {backgroundColor: '#0a7ea4'},
-    filterText: {fontSize: 14, fontWeight: '500', opacity: 0.7},
+    filterText: {fontSize: 13, fontWeight: '600', opacity: 0.6},
     filterTextActive: {color: '#fff', opacity: 1},
 
-    listContent: {paddingBottom: 100},
+    listContent: {padding: 20, paddingBottom: 100},
     card: {
-        padding: 20,
+        padding: 18,
         borderRadius: 20,
         marginBottom: 15,
         borderWidth: 1,
         borderColor: 'rgba(150, 150, 150, 0.1)',
+        ...Platform.select({
+            ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.05, shadowRadius: 8},
+            android: {elevation: 2}
+        })
     },
-    cardHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10},
-    jobTitle: {fontSize: 18, flex: 1, fontWeight: '700'},
-    badge: {paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8},
-    badgeText: {color: '#fff', fontSize: 10, fontWeight: '800', textTransform: 'uppercase'},
-    addressText: {opacity: 0.6, fontSize: 14, lineHeight: 20, marginBottom: 15},
+    cardHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12},
+    jobTitle: {fontSize: 17, flex: 1, marginRight: 10},
+    badge: {paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6},
+    badgeText: {color: '#fff', fontSize: 9, fontWeight: '900', textTransform: 'uppercase'},
+    addressRow: {flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 15},
+    addressText: {opacity: 0.5, fontSize: 13, flex: 1},
     cardFooter: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         alignItems: 'center',
         borderTopWidth: 1,
-        borderTopColor: 'rgba(150,150,150,0.1)',
-        paddingTop: 12
+        borderTopColor: 'rgba(150, 150, 150, 0.05)',
+        paddingTop: 12,
+        gap: 5
     },
-    dateText: {fontSize: 13, fontWeight: '600', color: '#0a7ea4'},
+    footerInfo: {fontSize: 12, color: '#0a7ea4', fontWeight: '600'},
 
-    emptyContainer: {alignItems: 'center', marginTop: 50},
-    emptyText: {textAlign: 'center', marginTop: 15, opacity: 0.5, maxWidth: '80%'},
+    emptyContainer: {alignItems: 'center', marginTop: 80, opacity: 0.8},
+    emptyText: {textAlign: 'center', marginTop: 15, opacity: 0.5, fontSize: 14, paddingHorizontal: 40},
 
     fab: {
         position: 'absolute',
         bottom: 30,
-        right: 20,
-        width: 65,
-        height: 65,
-        borderRadius: 20,
+        right: 25,
+        width: 60,
+        height: 60,
+        borderRadius: 18,
         backgroundColor: '#0a7ea4',
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 8,
-        shadowColor: '#000',
+        shadowColor: '#0a7ea4',
         shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.3,
-        shadowRadius: 5,
+        shadowRadius: 6,
+        elevation: 5,
     }
 });
