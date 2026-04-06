@@ -18,18 +18,29 @@ import {Buffer} from 'buffer';
 
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
-import {createJob} from '@/libs/owner/jobs/create-jobs';
+import {createJobTemporal} from '@/libs/owner/jobs/create-jobs';
 import {getAllWorkers} from '@/libs/owner/workers/get-workers';
 import {Worker} from '@/libs/types/worker';
 import {supabase} from "@/libs/supabase";
+
+interface InitialJobData {
+    title?: string;
+    description?: string;
+    address?: string;
+    image_url?: string;
+    quoteId?: string;
+    fecha_preferida?: string;
+    cotizacion_id?: string;
+}
 
 interface CreateJobModalProps {
     visible: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    initialData?: InitialJobData;
 }
 
-export const CreateJobModal = ({visible, onClose, onSuccess}: CreateJobModalProps) => {
+export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: CreateJobModalProps) => {
     const [loading, setLoading] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [workers, setWorkers] = useState<Worker[]>([]);
@@ -45,6 +56,7 @@ export const CreateJobModal = ({visible, onClose, onSuccess}: CreateJobModalProp
         image_url: '',
         worker_id: null as string | null,
         fecha_cita: new Date(),
+        cotizacion_id: initialData?.cotizacion_id || undefined,
     });
 
     useEffect(() => {
@@ -60,6 +72,33 @@ export const CreateJobModal = ({visible, onClose, onSuccess}: CreateJobModalProp
             fetchWorkers();
         }
     }, [visible]);
+
+    useEffect(() => {
+        if (visible) {
+            if (initialData) {
+                const dateFromQuote = initialData.fecha_preferida ? new Date(initialData.fecha_preferida) : new Date();
+                setForm({
+                    title: initialData.title || '',
+                    description: initialData.description || '',
+                    address: initialData.address || '',
+                    image_url: initialData.image_url || '',
+                    fecha_cita: isNaN(dateFromQuote.getTime()) ? new Date() : dateFromQuote,
+                    worker_id: null,
+                    cotizacion_id: initialData.cotizacion_id,
+                });
+            } else {
+                setForm({
+                    title: '',
+                    description: '',
+                    address: '',
+                    image_url: '',
+                    worker_id: null,
+                    fecha_cita: new Date(),
+                    cotizacion_id: undefined,
+                });
+            }
+        }
+    }, [visible, initialData]);
 
     const handlePickImage = async (useCamera: boolean) => {
         const permission = useCamera
@@ -128,7 +167,7 @@ export const CreateJobModal = ({visible, onClose, onSuccess}: CreateJobModalProp
 
             if (!creatorId) {
                 const {data: {user}} = await supabase.auth.getUser();
-                if (!user) throw new Error("No hay una sesión activa. Reintenta loguear.");
+                if (!user) throw new Error("No hay una sesión activa.");
                 creatorId = user.id;
             }
 
@@ -140,17 +179,15 @@ export const CreateJobModal = ({visible, onClose, onSuccess}: CreateJobModalProp
                 worker_id: form.worker_id,
                 fecha_cita: form.fecha_cita.toISOString(),
                 created_by: creatorId,
-                status: 'Pendiente'
+                status: 'Pendiente',
+                cotizacion_id: form.cotizacion_id,
             };
 
-            await createJob(dataToSave);
+            console.log('fecha recibida: ', initialData?.fecha_preferida)
+            console.log('fecha a guardar: ', dataToSave.fecha_cita)
 
+            await createJobTemporal(dataToSave);
             Alert.alert("¡Éxito!", "Trabajo creado correctamente.");
-
-            setForm({
-                title: '', description: '', address: '', image_url: '',
-                worker_id: null, fecha_cita: new Date()
-            });
             onSuccess();
             onClose();
         } catch (e: any) {
@@ -163,25 +200,32 @@ export const CreateJobModal = ({visible, onClose, onSuccess}: CreateJobModalProp
     const onChangeDate = (event: any, selectedDate?: Date) => {
         setShowDatePicker(false);
         if (selectedDate && event.type !== 'dismissed') {
-            const newDate = new Date(form.fecha_cita);
-            newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-            setForm({...form, fecha_cita: newDate});
+            const updatedDate = new Date(form.fecha_cita);
+            updatedDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+            setForm({...form, fecha_cita: updatedDate});
         }
     };
 
     const onChangeTime = (event: any, selectedDate?: Date) => {
         setShowTimePicker(false);
         if (selectedDate && event.type !== 'dismissed') {
-            const newDate = new Date(form.fecha_cita);
-            newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
-            setForm({...form, fecha_cita: newDate});
+            const updatedDate = new Date(form.fecha_cita);
+            updatedDate.setHours(selectedDate.getHours());
+            updatedDate.setMinutes(selectedDate.getMinutes());
+            updatedDate.setSeconds(0);
+            setForm({...form, fecha_cita: updatedDate});
         }
     };
 
     const formattedDate = form.fecha_cita.toLocaleDateString('es-ES', {
         weekday: 'short', day: 'numeric', month: 'short'
     });
-    const formattedTime = form.fecha_cita.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
+
+    const formattedTime = form.fecha_cita.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
 
     const assignedWorker = workers.find(w => w.id === form.worker_id);
 
@@ -216,7 +260,6 @@ export const CreateJobModal = ({visible, onClose, onSuccess}: CreateJobModalProp
                                 <ActivityIndicator size="large" color="#0a7ea4"/>
                             </View>
                         )}
-
                         <View style={styles.imageButtons}>
                             <TouchableOpacity style={styles.actionBtn} onPress={() => handlePickImage(false)}
                                               disabled={uploadingImage}>
@@ -260,8 +303,10 @@ export const CreateJobModal = ({visible, onClose, onSuccess}: CreateJobModalProp
                         <DateTimePicker
                             value={form.fecha_cita}
                             mode="time"
+                            is24Hour={false} // FORZAMOS MODO 12 HORAS EN ANDROID
                             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                             onChange={onChangeTime}
+                            locale="es-ES"
                         />
                     )}
 
@@ -417,14 +462,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 5,
         alignItems: 'center'
     },
-    saveBtn: {
-        backgroundColor: '#0a7ea4',
-        padding: 18,
-        borderRadius: 16,
-        marginTop: 30,
-        alignItems: 'center',
-        elevation: 2
-    },
+    saveBtn: {backgroundColor: '#0a7ea4', padding: 18, borderRadius: 16, marginTop: 30, alignItems: 'center'},
     btnDisabled: {opacity: 0.5},
     saveBtnText: {color: '#fff', fontWeight: 'bold', fontSize: 16}
 });

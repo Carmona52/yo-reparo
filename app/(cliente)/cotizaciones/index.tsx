@@ -52,7 +52,7 @@ export default function CotizacionesScreen() {
         const s = status?.toLowerCase() || '';
         if (s.includes('pendiente')) return {color: '#FF9500', label: 'Pendiente'};
         if (s.includes('enviada') || s.includes('proceso')) return {color: '#007AFF', label: 'En Proceso'};
-        if (s.includes('aceptada') || s.includes('terminado')) return {color: '#34C759', label: 'Completado'};
+        if (s.includes('aceptada') || s.includes('terminado')) return {color: '#34C759', label: 'Aceptada'};
         if (s.includes('rechazada')) return {color: '#FF3B30', label: 'Cancelado'};
         return {color: '#8E8E93', label: status};
     };

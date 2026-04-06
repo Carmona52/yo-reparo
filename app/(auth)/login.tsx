@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, {useState} from 'react'
 import {
     View,
     TextInput,
@@ -13,14 +13,14 @@ import {
     ScrollView,
     Dimensions
 } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
-import { supabase } from '@/libs/supabase'
-import { registerForPushNotificationsAsync } from '@/libs/notifications/notifications';
-import { ThemedView } from '@/components/themed-view'
-import { ThemedText } from '@/components/themed-text'
+import {Ionicons} from '@expo/vector-icons'
+import {useRouter} from 'expo-router'
+import {supabase} from '@/libs/supabase'
+import {registerForPushNotificationsAsync} from '@/libs/notifications/notifications';
+import {ThemedView} from '@/components/themed-view'
+import {ThemedText} from '@/components/themed-text'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 export default function Login() {
     const router = useRouter()
@@ -47,7 +47,7 @@ export default function Login() {
         }
         setLoading(true)
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+            const {data, error} = await supabase.auth.signInWithPassword({email, password})
             if (error) throw error;
 
             if (data.user) {
@@ -65,7 +65,7 @@ export default function Login() {
         <ThemedView style={styles.container}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}>
+                style={{flex: 1}}>
 
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
@@ -89,50 +89,60 @@ export default function Login() {
 
                     <View style={styles.formContainer}>
                         <View style={inputWrapperStyle}>
-                            <Ionicons name="mail-outline" size={20} color={isDark ? '#8e8e93' : '#666'} style={styles.icon} />
+                            <Ionicons name="mail-outline" size={20} color={isDark ? '#8e8e93' : '#666'}
+                                      style={styles.icon}/>
                             <TextInput
                                 placeholder="Correo electrónico"
                                 placeholderTextColor={isDark ? '#8e8e93' : '#999'}
                                 value={email}
                                 onChangeText={setEmail}
-                                style={[styles.input, { color: isDark ? '#fff' : '#000' }]}
+                                style={[styles.input, {color: isDark ? '#fff' : '#000'}]}
                                 autoCapitalize="none"
                                 autoCorrect={false}
-                                keyboardType="email-address" />
+                                keyboardType="email-address"/>
                         </View>
 
                         <View style={inputWrapperStyle}>
-                            <Ionicons name="lock-closed-outline" size={20} color={isDark ? '#8e8e93' : '#666'} style={styles.icon} />
+                            <Ionicons name="lock-closed-outline" size={20} color={isDark ? '#8e8e93' : '#666'}
+                                      style={styles.icon}/>
                             <TextInput
                                 placeholder="Contraseña"
                                 placeholderTextColor={isDark ? '#8e8e93' : '#999'}
                                 value={password}
                                 onChangeText={setPassword}
-                                style={[styles.input, { color: isDark ? '#fff' : '#000' }]}
-                                secureTextEntry={!showPassword} />
+                                style={[styles.input, {color: isDark ? '#fff' : '#000'}]}
+                                secureTextEntry={!showPassword}/>
                             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                                 <Ionicons
                                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                                     size={20}
-                                    color={isDark ? '#8e8e93' : '#666'} />
+                                    color={isDark ? '#8e8e93' : '#666'}/>
                             </TouchableOpacity>
                         </View>
 
                         <TouchableOpacity
-                            style={[styles.button, { backgroundColor: '#0a7ea4' }]}
+                            style={[styles.button, {backgroundColor: '#0a7ea4'}]}
                             onPress={handleLogin}
                             disabled={loading}
                             activeOpacity={0.8}>
                             {loading
-                                ? <ActivityIndicator color="#fff" />
+                                ? <ActivityIndicator color="#fff"/>
                                 : <ThemedText style={styles.buttonText}>Iniciar Sesión</ThemedText>
                             }
                         </TouchableOpacity>
 
                         <View style={styles.footer}>
-                            <ThemedText style={{ opacity: 0.6 }}>¿Aún no tienes cuenta? </ThemedText>
+                            <ThemedText style={{opacity: 0.6}}>¿Aún no tienes cuenta? </ThemedText>
                             <TouchableOpacity onPress={() => router.replace('/(auth)/register')}>
-                                <ThemedText type="defaultSemiBold" style={{ color: '#0a7ea4' }}>Regístrate</ThemedText>
+                                <ThemedText type="defaultSemiBold" style={{color: '#0a7ea4'}}>Regístrate</ThemedText>
+                            </TouchableOpacity>
+
+
+                        </View> <View style={styles.footer}>
+                            <TouchableOpacity
+                                style={styles.forgotPasswordBtn}
+                                onPress={() => router.push('/(auth)/forgot-password')}>
+                                <ThemedText style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</ThemedText>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -162,7 +172,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
-        height: 120, // Altura fija para el contenedor de logos
+        height: 120,
     },
     faviconImage: {
         flex: 0.4,
@@ -200,7 +210,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginTop: 10,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 3,
@@ -215,5 +225,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         marginTop: 30,
-    }
+    },
+    forgotPasswordBtn: {
+        alignSelf: 'flex-end',
+        marginBottom: 20,
+        marginRight: 5,
+    },
+    forgotPasswordText: {
+        color: '#0a7ea4',
+        fontSize: 14,
+        opacity: 0.8,
+    },
 })

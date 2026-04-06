@@ -11,5 +11,13 @@ export interface Job {
     created_at: string;
     fecha_cita: string;
     image_url?:string;
+}
 
+export interface createJob {
+    title: string;
+    description: string;
+    address: string;
+    image_url: string;
+    worker_id: string;
+    fecha_cita: string;
 }

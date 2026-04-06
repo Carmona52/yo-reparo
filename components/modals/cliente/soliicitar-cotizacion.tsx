@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {
     Modal, TextInput, ScrollView, Alert, ActivityIndicator,
     StyleSheet, TouchableOpacity, View, Platform, Image
@@ -41,9 +41,10 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
     const [uploadingImage, setUploadingImage] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
-    const [showServiceList, setShowServiceList] = useState(false); // Nuevo estado para el dropdown
+    const [showServiceList, setShowServiceList] = useState(false);
     const [tempDate, setTempDate] = useState(new Date());
     const [form, setForm] = useState(INITIAL_FORM);
+    const [profile, setProfile] = useState<{ name: string } | null>(null);
 
     const textColor = useThemeColor({}, 'text');
 
@@ -111,22 +112,72 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
         }
     };
 
+    const fetchProfile = async () => {
+        try {
+            const {data: {session}} = await supabase.auth.getSession();
+            if (session) {
+                const {data} = await supabase
+                    .from('profiles')
+                    .select('name')
+                    .eq('id', session.user.id)
+                    .single();
+                if (data) setProfile(data);
+            }
+        } catch (error) {
+            console.error("Error al cargar perfil:", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchProfile();
+    }, []);
+
     const handleSave = async () => {
         const {servicio, descripcion, direccion} = form;
-        if (!servicio || !descripcion.trim() || !direccion.trim()) return Alert.alert("Atención", "Campos obligatorios vacíos.");
+        const {data: {user}} = await supabase.auth.getUser();
+
+        if (!servicio || !descripcion.trim() || !direccion.trim()) {
+            return Alert.alert("Atención", "Campos obligatorios vacíos.");
+        }
+
         setLoading(true);
         try {
-            const {data: {user}} = await supabase.auth.getUser();
-            const {error} = await supabase.from('cotizaciones').insert([{
-                ...form,
-                created_by: user?.id,
-                estado: 'Pendiente'
-            }]);
+            const {data: job, error} = await supabase
+                .from('cotizaciones')
+                .insert([{
+                    ...form,
+                    created_by: user?.id,
+                    estado: 'Pendiente'
+                }])
+                .select()
+                .single();
+
             if (error) throw error;
+
             Alert.alert("Éxito", "Solicitud enviada.");
             handleReset();
             onSuccess();
             onClose();
+
+            if (job) {
+                console.log('Notificando a admins para la cotización:', job.id);
+
+                supabase.functions.invoke('send-to-admins', {
+                    body: {
+                        role: 'owner',
+                        title: 'Nueva Cotización Recibida',
+                        body: `${profile?.name || 'Un cliente'} ha solicitado: ${servicio}`,
+                        data: {
+                            quoteId: job.id,
+                            type: 'new_quote'
+                        },
+                    }
+                }).then(({error: funcError}) => {
+                    if (funcError) console.error('Error enviando notificación:', funcError);
+                    else console.log('Admins notificados correctamente');
+                });
+            }
+
         } catch (e: any) {
             Alert.alert("Error", e.message);
         } finally {

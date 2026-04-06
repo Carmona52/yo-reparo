@@ -5,12 +5,10 @@ import {
     ActivityIndicator,
     Alert,
     TouchableOpacity,
-    Linking,
     ScrollView,
     Image,
     Modal,
     TextInput,
-    Platform,
 } from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
@@ -19,10 +17,13 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
-import {supabase} from "@/libs/supabase";
-import {cotizacionesService} from "@/libs/users/get-cotizacioes";
-import {Cotizacion} from "@/libs/types/cotizaciones";
 import {useThemeColor} from '@/hooks/use-theme-color';
+import {Cotizacion} from "@/libs/types/cotizaciones";
+
+import {cotizacionesService} from "@/libs/users/get-cotizacioes";
+import {quotesService} from "@/libs/users/cotizaciones";
+import {supabase} from "@/libs/supabase";
+import {CreateJobModal} from "@/components/modals/owner/create-job";
 
 export default function OwnerQuoteDetail() {
     const {id} = useLocalSearchParams();
@@ -32,7 +33,7 @@ export default function OwnerQuoteDetail() {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [isImageZoomVisible, setImageZoomVisible] = useState(false);
-
+    const [isCreateJobVisible, setCreateJobVisible] = useState(false);
     const [costo, setCosto] = useState('');
     const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerResult | null>(null);
 
@@ -46,6 +47,7 @@ export default function OwnerQuoteDetail() {
         try {
             const data = await cotizacionesService.getCotizacionDetails(id as string);
             setQuote(data[0]);
+            console.log(data[0].fecha_preferida);
             if (data[0].costo_estimado) setCosto(data[0].costo_estimado.toString().replace('$', ''));
         } catch (e) {
             Alert.alert("Error", "No se pudo cargar la información");
@@ -80,32 +82,35 @@ export default function OwnerQuoteDetail() {
             return;
         }
 
+        const costoNum = parseFloat(costo);
+        if (isNaN(costoNum) || costoNum <= 0) {
+            Alert.alert("Costo inválido", "Ingresa un costo válido mayor a cero.");
+            return;
+        }
+
         setSending(true);
         try {
-            const file = selectedFile.assets![0];
-            const fileName = `presupuesto_${id}_${Date.now()}.pdf`;
-            const filePath = `presupuestos/${fileName}`;
+            const fileUri = selectedFile.assets![0].uri;
+            const quoteId = id as string;
+            const fileName = `cotizacion-${quoteId}.pdf`;
 
-            const response = await fetch(file.uri);
+            const response = await fetch(fileUri);
             const blob = await response.blob();
             const arrayBuffer = await new Response(blob).arrayBuffer();
 
-            const {error: uploadError} = await supabase.storage
-                .from('cotizaciones')
-                .upload(filePath, arrayBuffer, {contentType: 'application/pdf', upsert: true});
+            const {data, error} = await supabase.storage.from('pdfs').upload(fileName, arrayBuffer,
+                {contentType: 'application/pdf', upsert: true})
+            if (error) {
+                console.log(error);
+                throw new Error("Error al subir el archivo");
+            }
+            const {data: {publicUrl}} = supabase.storage
+                .from('pdfs')
+                .getPublicUrl(fileName)
 
-            if (uploadError) throw uploadError;
+            await quotesService.updateQuoteWithEstimate(quoteId, costo, publicUrl);
 
-            const {data: {publicUrl}} = supabase.storage.from('cotizaciones').getPublicUrl(filePath);
-
-            const {error: updateError} = await supabase
-                .from('cotizaciones')
-                .update({costo_estimado: costo, pdf_url: publicUrl, estado: 'Enviada'})
-                .eq('id', id);
-
-            if (updateError) throw updateError;
-
-            Alert.alert("Éxito", "Cotización enviada.");
+            Alert.alert("Éxito", "Cotización enviada exitosamente.");
             router.back();
         } catch (e: any) {
             Alert.alert("Error", e.message);
@@ -114,9 +119,21 @@ export default function OwnerQuoteDetail() {
         }
     };
 
+    const handleAssignWorker = () => {
+        Alert.alert("Siguiente paso", "Aquí abriremos la lista de trabajadores para usar la función updateJob.");
+    };
+
+    const handleJobCreatedSuccess = () => {
+        Alert.alert("Trabajo Iniciado", "El trabajador ha sido asignado y el trabajo ha sido creado.");
+        loadQuote();
+    };
+
     if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large"
                                                                              color="#007AFF"/></ThemedView>;
     if (!quote) return <ThemedView style={styles.center}><ThemedText>Error al cargar.</ThemedText></ThemedView>;
+
+    const isAceptada = quote.estado?.toLowerCase() === 'aceptada';
+    const isEnviada = quote.estado?.toLowerCase() === 'enviada';
 
     return (
         <ThemedView style={styles.container}>
@@ -131,6 +148,9 @@ export default function OwnerQuoteDetail() {
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
                     <ThemedView style={styles.clientCard}>
+                        <View style={styles.statusBadge}>
+                            <ThemedText style={styles.statusText}>{quote.estado || 'Pendiente'}</ThemedText>
+                        </View>
                         <ThemedText type="defaultSemiBold" style={styles.serviceTitle}>{quote.servicio}</ThemedText>
                         <View style={styles.infoLine}>
                             <Ionicons name="location" size={16} color="#007AFF"/>
@@ -149,8 +169,7 @@ export default function OwnerQuoteDetail() {
                         <TouchableOpacity
                             activeOpacity={0.9}
                             onPress={() => setImageZoomVisible(true)}
-                            style={styles.imageWrapper}
-                        >
+                            style={styles.imageWrapper}>
                             <Image source={{uri: quote.evidencia_url}} style={styles.previewImage} resizeMode="cover"/>
                             <View style={styles.zoomIconOverlay}>
                                 <Ionicons name="expand" size={20} color="#FFF"/>
@@ -160,58 +179,79 @@ export default function OwnerQuoteDetail() {
 
                     <View style={styles.divider}/>
 
-                    <ThemedText type="subtitle" style={{marginBottom: 15}}>Responder al Cliente</ThemedText>
+                    {isAceptada ? (
+                        <ThemedView style={styles.acceptedCard}>
+                            <Ionicons name="checkmark-circle" size={48} color="#4CD964" style={{marginBottom: 10}}/>
+                            <ThemedText type="subtitle" style={{textAlign: 'center', marginBottom: 5}}>¡Cotización
+                                Aceptada!</ThemedText>
+                            <ThemedText style={{textAlign: 'center', opacity: 0.7, marginBottom: 20}}>
+                                El cliente ha aprobado el presupuesto de ${costo}. Es momento de asignar un trabajador a
+                                este proyecto.
+                            </ThemedText>
+                            <TouchableOpacity style={styles.assignBtn} onPress={() => setCreateJobVisible(true)}>
+                                <ThemedText style={styles.sendBtnText}>Asignar Trabajador</ThemedText>
+                                <Ionicons name="person-add" size={18} color="#fff" style={{marginLeft: 10}}/>
+                            </TouchableOpacity>
+                        </ThemedView>
 
-                    <ThemedText style={styles.inputLabel}>Costo Estimado</ThemedText>
-                    <ThemedView style={styles.priceInputContainer}>
-                        <ThemedText style={styles.currencySymbol}>$</ThemedText>
-                        <TextInput
-                            style={[styles.priceInput, {color: textColor}]}
-                            placeholder="0.00"
-                            placeholderTextColor="rgba(150,150,150,0.5)"
-                            keyboardType="numeric"
-                            value={costo}
-                            onChangeText={setCosto}
-                        />
-                    </ThemedView>
+                    ) : isEnviada ? (
+                        <ThemedView style={styles.pendingCard}>
+                            <Ionicons name="time" size={48} color="#FF9500" style={{marginBottom: 10}}/>
+                            <ThemedText type="subtitle" style={{textAlign: 'center', marginBottom: 5}}>Esperando
+                                Respuesta</ThemedText>
+                            <ThemedText style={{textAlign: 'center', opacity: 0.7}}>
+                                Ya enviaste esta cotización por ${costo}. Estamos esperando a que el cliente la revise y
+                                apruebe.
+                            </ThemedText>
+                        </ThemedView>
 
-                    <ThemedText style={styles.inputLabel}>Documento de Presupuesto (PDF)</ThemedText>
-                    <TouchableOpacity
-                        style={[styles.filePicker, selectedFile ? styles.fileSelected : null]}
-                        onPress={handlePickDocument}
-                    >
-                        <Ionicons
-                            name={selectedFile ? "checkmark-circle" : "document-attach-outline"}
-                            size={24}
-                            color={selectedFile ? "#4CD964" : "#007AFF"}
-                        />
-                        <ThemedText style={{color: selectedFile ? "#4CD964" : "#007AFF", fontWeight: '600'}}>
-                            {selectedFile ? "PDF Adjuntado" : "Seleccionar PDF"}
-                        </ThemedText>
-                    </TouchableOpacity>
+                    ) : (
+                        <>
+                            <ThemedText type="subtitle" style={{marginBottom: 15}}>Responder al Cliente</ThemedText>
 
-                    {selectedFile && (
-                        <ThemedText style={styles.fileName}>
-                            {selectedFile.assets![0].name}
-                        </ThemedText>
+                            <ThemedText style={styles.inputLabel}>Costo Estimado</ThemedText>
+                            <ThemedView style={styles.priceInputContainer}>
+                                <ThemedText style={styles.currencySymbol}>$</ThemedText>
+                                <TextInput
+                                    style={[styles.priceInput, {color: textColor}]}
+                                    placeholder="0.00"
+                                    placeholderTextColor="rgba(150,150,150,0.5)"
+                                    keyboardType="numeric"
+                                    value={costo}
+                                    onChangeText={setCosto}
+                                />
+                            </ThemedView>
+
+                            <ThemedText style={styles.inputLabel}>Documento de Presupuesto (PDF)</ThemedText>
+                            <TouchableOpacity
+                                style={[styles.filePicker, selectedFile ? styles.fileSelected : null]}
+                                onPress={handlePickDocument}>
+                                <Ionicons
+                                    name={selectedFile ? "checkmark-circle" : "document-attach-outline"}
+                                    size={24}
+                                    color={selectedFile ? "#4CD964" : "#007AFF"}
+                                />
+                                <ThemedText style={{color: selectedFile ? "#4CD964" : "#007AFF", fontWeight: '600'}}>
+                                    {selectedFile ? selectedFile.assets![0].name : "Seleccionar PDF"}
+                                </ThemedText>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.sendBtn, (sending || !selectedFile) && styles.btnDisabled]}
+                                onPress={handleSendQuote}
+                                disabled={sending || !selectedFile}>
+                                {sending ? <ActivityIndicator color="#fff"/> : (
+                                    <>
+                                        <ThemedText style={styles.sendBtnText}>Enviar Presupuesto</ThemedText>
+                                        <Ionicons name="send" size={18} color="#fff" style={{marginLeft: 10}}/>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </>
                     )}
-
-                    <TouchableOpacity
-                        style={[styles.sendBtn, (sending || !selectedFile) && styles.btnDisabled]}
-                        onPress={handleSendQuote}
-                        disabled={sending || !selectedFile}
-                    >
-                        {sending ? <ActivityIndicator color="#fff"/> : (
-                            <>
-                                <ThemedText style={styles.sendBtnText}>Enviar Presupuesto</ThemedText>
-                                <Ionicons name="send" size={18} color="#fff" style={{marginLeft: 10}}/>
-                            </>
-                        )}
-                    </TouchableOpacity>
                 </ScrollView>
             </SafeAreaView>
 
-            {/* Modal de Zoom */}
             <Modal visible={isImageZoomVisible} transparent={true} animationType="fade">
                 <View style={styles.modalOverlay}>
                     <TouchableOpacity style={styles.closeBtn} onPress={() => setImageZoomVisible(false)}>
@@ -224,6 +264,19 @@ export default function OwnerQuoteDetail() {
                     />
                 </View>
             </Modal>
+
+            <CreateJobModal
+                visible={isCreateJobVisible}
+                onClose={() => setCreateJobVisible(false)}
+                onSuccess={handleJobCreatedSuccess}
+                initialData={{
+                    title: quote.servicio,
+                    description: quote.descripcion as string,
+                    address: quote.direccion,
+                    image_url: quote.evidencia_url as string,
+                    fecha_preferida:quote.fecha_preferida as string,
+                }}
+            />
         </ThemedView>
     );
 }
@@ -241,8 +294,24 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(150,150,150,0.15)',
         backgroundColor: 'rgba(150,150,150,0.05)',
+        position: 'relative'
     },
-    serviceTitle: {fontSize: 18, marginBottom: 8},
+    statusBadge: {
+        position: 'absolute',
+        top: 15,
+        right: 15,
+        backgroundColor: 'rgba(0,122,255,0.1)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10
+    },
+    statusText: {
+        color: '#007AFF',
+        fontSize: 12,
+        fontWeight: 'bold',
+        textTransform: 'uppercase'
+    },
+    serviceTitle: {fontSize: 18, marginBottom: 8, paddingRight: 80},
     infoLine: {flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6},
     infoText: {fontSize: 14, opacity: 0.6},
     sectionLabel: {
@@ -291,5 +360,32 @@ const styles = StyleSheet.create({
     sendBtnText: {color: '#fff', fontWeight: 'bold', fontSize: 16},
     modalOverlay: {flex: 1, backgroundColor: '#000', justifyContent: 'center'},
     closeBtn: {position: 'absolute', top: 50, right: 25, zIndex: 10, padding: 10},
-    fullImage: {width: '100%', height: '80%'}
+    fullImage: {width: '100%', height: '80%'},
+
+    acceptedCard: {
+        alignItems: 'center',
+        backgroundColor: 'rgba(76,217,100,0.05)',
+        padding: 25,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(76,217,100,0.3)'
+    },
+    assignBtn: {
+        backgroundColor: '#34C759',
+        paddingVertical: 15,
+        paddingHorizontal: 25,
+        borderRadius: 12,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%'
+    },
+    pendingCard: {
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,149,0,0.05)',
+        padding: 25,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,149,0,0.3)'
+    }
 });

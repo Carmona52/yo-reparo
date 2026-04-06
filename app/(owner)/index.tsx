@@ -78,11 +78,9 @@ export default function HomeScreen() {
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
         const days = [];
-        // Rellenar días vacíos del mes anterior para alinear columnas
         for (let i = 0; i < firstDayOfMonth; i++) {
             days.push(null);
         }
-        // Rellenar los días del mes actual
         for (let d = 1; d <= daysInMonth; d++) {
             days.push(new Date(year, month, d));
         }
@@ -110,7 +108,6 @@ export default function HomeScreen() {
                     }
                     contentContainerStyle={styles.scrollContent}
                 >
-                    {/* Header corregido */}
                     <View style={styles.headerContainer}>
                         <ThemedText style={styles.greetingText}>
                             Hola, {profile?.name || 'Usuario'} 👋
@@ -258,7 +255,7 @@ const styles = StyleSheet.create({
 
     daysGrid: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start'},
     dayCell: {
-        width: `${100 / 7}%`, // Siete columnas exactas
+        width: `${100 / 7}%`,
         height: 38,
         justifyContent: 'center',
         alignItems: 'center',
