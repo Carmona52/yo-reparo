@@ -70,8 +70,7 @@ export default function Login() {
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                >
+                    keyboardShouldPersistTaps="handled">
                     <View style={styles.header}>
                         <View style={styles.logoRow}>
                             <Image
@@ -136,7 +135,6 @@ export default function Login() {
                             <TouchableOpacity onPress={() => router.replace('/(auth)/register')}>
                                 <ThemedText type="defaultSemiBold" style={{color: '#0a7ea4'}}>Regístrate</ThemedText>
                             </TouchableOpacity>
-
 
                         </View> <View style={styles.footer}>
                             <TouchableOpacity

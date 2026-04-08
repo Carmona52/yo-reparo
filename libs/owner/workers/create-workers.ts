@@ -5,7 +5,7 @@ export async function createWorkerByAdmin(
     password: string,
     name: string,
     phone: string,
-    role: 'worker' | 'supervisor' | 'admin'
+    role: 'worker' | 'supervisor' | 'owner'
 ) {
     const {data, error} = await supabase.functions.invoke('quick-endpoint', {
         body: {

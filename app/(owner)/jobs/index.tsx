@@ -101,7 +101,7 @@ export default function JobsScreen() {
             } as any)}>
             <View style={[
                 styles.card,
-                {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff'}
+                {backgroundColor: isDark ? 'rgba(0,0,0)' : '#fff'}
             ]}>
                 <View style={styles.cardHeader}>
                     <ThemedText type="defaultSemiBold" style={styles.jobTitle} numberOfLines={1}>

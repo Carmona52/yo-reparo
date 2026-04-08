@@ -16,3 +16,4 @@ export async function updateJob(jobId: string, updates: { status?: string, worke
 
     return data;
 }
+

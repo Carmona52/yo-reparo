@@ -26,10 +26,16 @@ export const cotizacionesService = {
         try {
             const {data, error} = await supabase
                 .from('cotizaciones')
-                .select('*')
+                .select(`
+        *,
+        profiles:created_by (
+          name,id
+        )
+    `)
                 .eq('id', id);
 
             if (error) throw error;
+            console.log(data)
             return data as Cotizacion[];
         } catch (error: any) {
             console.error("Error en getCotizacionDetails:", error.message);

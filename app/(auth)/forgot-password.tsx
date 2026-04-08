@@ -65,9 +65,10 @@ export default function ForgotPassword() {
                     />
                 </View>
 
+
+
                 <TouchableOpacity style={styles.button} onPress={handleReset} disabled={loading}>
-                    {loading ? <ActivityIndicator color="#fff"/> :
-                        <ThemedText style={styles.buttonText}>Enviar enlace</ThemedText>}
+                    {loading ? <ActivityIndicator color="#fff"/> : <ThemedText style={styles.buttonText}>Enviar enlace</ThemedText>}
                 </TouchableOpacity>
             </View>
         </ThemedView>

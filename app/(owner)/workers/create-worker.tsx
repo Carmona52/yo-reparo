@@ -8,11 +8,13 @@ import {
     ScrollView
 } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from '@expo/vector-icons'; // Importante para el ojito
 
 import { createWorkerByAdmin } from "@/libs/owner/workers/create-workers";
 import { ThemedText } from "@/components/themed-text";
+import { useThemeColor } from '@/hooks/use-theme-color'; // Para que el texto se vea bien siempre
 
-type Role = 'worker' | 'supervisor' | 'admin';
+type Role = 'worker' | 'supervisor' | 'owner';
 
 export default function Workers() {
     const [email, setEmail] = useState('');
@@ -22,6 +24,10 @@ export default function Workers() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const [secureText, setSecureText] = useState(true);
+
+    const textColor = useThemeColor({}, 'text');
+
     const createWorker = async () => {
         if (!email || !name || !password) {
             Alert.alert('Error', 'Nombre, correo y contraseña son obligatorios');
@@ -29,21 +35,16 @@ export default function Workers() {
         }
 
         setLoading(true);
-
         try {
             const { data, error } = await createWorkerByAdmin(email, password, name, phone, role);
             if (error) {
-                console.log("Function error:", error);
                 Alert.alert("Error", JSON.stringify(error));
                 return;
             }
-
             Alert.alert('Éxito', 'Trabajador creado correctamente');
             resetForm();
-
         } catch (err: any) {
             Alert.alert('Error', err.message || 'Error inesperado');
-            console.error(err);
         } finally {
             setLoading(false);
         }
@@ -55,6 +56,7 @@ export default function Workers() {
         setPhone('');
         setPassword('');
         setRole('worker');
+        setSecureText(true);
     };
 
     return (
@@ -67,7 +69,7 @@ export default function Workers() {
                     placeholderTextColor="#888"
                     value={name}
                     onChangeText={setName}
-                    style={styles.input}
+                    style={[styles.input, { color: textColor }]}
                     editable={!loading}
                 />
 
@@ -76,7 +78,7 @@ export default function Workers() {
                     placeholderTextColor="#888"
                     value={email}
                     onChangeText={setEmail}
-                    style={styles.input}
+                    style={[styles.input, { color: textColor }]}
                     autoCapitalize="none"
                     keyboardType="email-address"
                     editable={!loading}
@@ -87,25 +89,38 @@ export default function Workers() {
                     placeholderTextColor="#888"
                     value={phone}
                     onChangeText={setPhone}
-                    style={styles.input}
+                    style={[styles.input, { color: textColor }]}
                     keyboardType="phone-pad"
                     editable={!loading}
                 />
 
-                <TextInput
-                    placeholder="Contraseña *"
-                    placeholderTextColor="#888"
-                    value={password}
-                    onChangeText={setPassword}
-                    style={styles.input}
-                    secureTextEntry
-                    editable={!loading}
-                />
+                {/* CONTENEDOR DE CONTRASEÑA CON OJITO */}
+                <View style={styles.passwordContainer}>
+                    <TextInput
+                        placeholder="Contraseña *"
+                        placeholderTextColor="#888"
+                        value={password}
+                        onChangeText={setPassword}
+                        style={[styles.passwordInput, { color: textColor }]}
+                        secureTextEntry={secureText}
+                        editable={!loading}
+                    />
+                    <TouchableOpacity
+                        onPress={() => setSecureText(!secureText)}
+                        style={styles.eyeIcon}
+                    >
+                        <Ionicons
+                            name={secureText ? "eye-off-outline" : "eye-outline"}
+                            size={22}
+                            color="#888"
+                        />
+                    </TouchableOpacity>
+                </View>
 
                 <View style={styles.roleContainer}>
                     <ThemedText style={styles.roleLabel}>Rol:</ThemedText>
                     <View style={styles.roleButtons}>
-                        {(['worker', 'supervisor', 'admin'] as Role[]).map((r) => (
+                        {(['worker', 'supervisor', 'owner'] as Role[]).map((r) => (
                             <TouchableOpacity
                                 key={r}
                                 style={[
@@ -129,8 +144,7 @@ export default function Workers() {
                 <TouchableOpacity
                     style={[styles.button, loading && styles.buttonDisabled]}
                     onPress={createWorker}
-                    disabled={loading}
-                >
+                    disabled={loading}>
                     <ThemedText style={styles.buttonText}>
                         {loading ? 'Creando...' : 'Crear Trabajador'}
                     </ThemedText>
@@ -156,11 +170,23 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         fontSize: 16,
         backgroundColor: 'rgba(150, 150, 150, 0.1)',
-        color: '#888',
     },
-    textArea: {
-        minHeight: 80,
-        textAlignVertical: 'top'
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(150, 150, 150, 0.3)',
+        borderRadius: 8,
+        marginBottom: 16,
+        backgroundColor: 'rgba(150, 150, 150, 0.1)',
+    },
+    passwordInput: {
+        flex: 1,
+        padding: 14,
+        fontSize: 16,
+    },
+    eyeIcon: {
+        paddingHorizontal: 14,
     },
     roleContainer: {
         marginBottom: 20
@@ -168,7 +194,6 @@ const styles = StyleSheet.create({
     roleLabel: {
         fontWeight: '600',
         marginBottom: 8,
-        // Eliminé el color fijo #4b5563
     },
     roleButtons: {
         flexDirection: 'row',
@@ -181,7 +206,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(150, 150, 150, 0.3)',
         alignItems: 'center',
-        backgroundColor: 'rgba(150, 150, 150, 0.05)' // Fondo adaptable
+        backgroundColor: 'rgba(150, 150, 150, 0.05)'
     },
     roleButtonActive: {
         backgroundColor: '#0a7ea4',
@@ -208,31 +233,5 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: 'bold',
         fontSize: 16
-    },
-    section: {
-        marginBottom: 20,
-        padding: 16,
-        backgroundColor: 'rgba(150, 150, 150, 0.05)',
-        borderRadius: 8
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    switchContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16
-    },
-    jobFields: {
-        marginTop: 8
-    },
-    row: {
-        flexDirection: 'row',
-        gap: 12
-    },
-    halfInput: {
-        flex: 1
     }
 });

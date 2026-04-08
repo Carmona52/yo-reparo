@@ -15,8 +15,11 @@ import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageViewer from 'react-native-image-zoom-viewer';
+
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
+import {useThemeColor} from '@/hooks/use-theme-color';
+
 import {updateJob} from '@/libs/owner/jobs/update-jobs';
 import {getAllWorkers} from '@/libs/owner/workers/get-workers';
 import {Worker} from '@/libs/types/worker';
@@ -33,6 +36,8 @@ export default function JobDetailScreen() {
     const [showWorkerList, setShowWorkerList] = useState(false);
     const [imageViewerVisible, setImageViewerVisible] = useState(false);
 
+    const textColor = useThemeColor({}, 'text');
+    const cardBackgroundColor = useThemeColor({}, 'background');
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -95,7 +100,8 @@ export default function JobDetailScreen() {
         <ThemedView style={{flex: 1}}>
             <View style={styles.topBar}>
                 <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                    <Ionicons name="chevron-back" size={24} color="#333"/>
+                    {/* El color del icono ahora responde al modo oscuro/claro */}
+                    <Ionicons name="chevron-back" size={24} color={textColor}/>
                 </TouchableOpacity>
                 <View style={[styles.badge, {backgroundColor: getStatusColor(job.status)}]}>
                     <ThemedText style={styles.badgeText}>{job.status}</ThemedText>
@@ -116,7 +122,7 @@ export default function JobDetailScreen() {
                                 <Image source={{uri: job.image_url}} style={styles.jobImage}/>
                             ) : (
                                 <View style={styles.noImagePlaceholder}>
-                                    <Ionicons name="image-outline" size={48} color="#ccc"/>
+                                    <Ionicons name="image-outline" size={48} color="#aaa"/>
                                     <ThemedText style={{color: '#aaa'}}>Sin evidencia fotográfica</ThemedText>
                                 </View>
                             )}
@@ -153,7 +159,7 @@ export default function JobDetailScreen() {
                     <ThemedText style={styles.label}>Responsable</ThemedText>
                     <TouchableOpacity style={styles.workerSelector} onPress={() => setShowWorkerList(!showWorkerList)}>
                         <View style={styles.workerInfoRow}>
-                            <View style={[styles.avatar, {backgroundColor: assignedWorker ? '#0a7ea4' : '#eee'}]}>
+                            <View style={[styles.avatar, {backgroundColor: assignedWorker ? '#0a7ea4' : 'rgba(150,150,150,0.3)'}]}>
                                 <ThemedText style={styles.avatarLetter}>{assignedWorker?.name[0] || '?'}</ThemedText>
                             </View>
                             <View>
@@ -167,7 +173,7 @@ export default function JobDetailScreen() {
                     </TouchableOpacity>
 
                     {showWorkerList && (
-                        <View style={styles.dropdown}>
+                        <ThemedView style={styles.dropdown}>
                             {workers.map(w => (
                                 <TouchableOpacity key={w.id} style={styles.workerOption}
                                                   onPress={() => handleUpdate({worker_id: w.id})}>
@@ -177,7 +183,7 @@ export default function JobDetailScreen() {
                                         <Ionicons name="checkmark-circle" size={20} color="#0a7ea4"/>}
                                 </TouchableOpacity>
                             ))}
-                        </View>
+                        </ThemedView>
                     )}
                 </View>
 
@@ -252,14 +258,14 @@ const styles = StyleSheet.create({
     scroll: {padding: 20},
 
     headerSection: {marginBottom: 25},
-    title: {fontSize: 28, fontWeight: '800', marginBottom: 20, color: '#1a1a1a'},
+    title: {fontSize: 28, fontWeight: '800', marginBottom: 20},
 
     mainImageWrapper: {
         width: '100%',
         height: 250,
         borderRadius: 28,
         overflow: 'hidden',
-        backgroundColor: '#f0f0f0',
+        backgroundColor: 'rgba(150,150,150,0.1)',
         elevation: 4,
         shadowColor: '#000',
         shadowOffset: {width: 0, height: 4},
@@ -284,16 +290,12 @@ const styles = StyleSheet.create({
     locationCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(150, 150, 150, 0.05)',
         padding: 16,
         borderRadius: 24,
         marginBottom: 25,
         borderWidth: 1,
-        borderColor: '#f0f0f0',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
+        borderColor: 'rgba(150, 150, 150, 0.1)',
     },
     iconCircle: {
         width: 40,
@@ -329,25 +331,24 @@ const styles = StyleSheet.create({
 
     dropdown: {
         marginTop: 10,
-        backgroundColor: '#fff',
         borderRadius: 20,
         padding: 10,
         borderWidth: 1,
-        borderColor: '#eee'
+        borderColor: 'rgba(150, 150, 150, 0.1)'
     },
     workerOption: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         padding: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#f9f9f9'
+        borderBottomColor: 'rgba(150, 150, 150, 0.05)'
     },
     workerOptionText: {fontSize: 15},
     activeText: {color: '#0a7ea4', fontWeight: 'bold'},
 
     descSection: {marginBottom: 30},
     sectionTitle: {fontSize: 18, marginBottom: 10},
-    descriptionText: {fontSize: 15, lineHeight: 22, color: '#555'},
+    descriptionText: {fontSize: 15, lineHeight: 22, opacity: 0.8},
 
     statusSection: {marginTop: 10},
     statusGrid: {flexDirection: 'row', gap: 8},
@@ -355,7 +356,7 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 14,
         borderRadius: 18,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: 'rgba(150, 150, 150, 0.08)',
         alignItems: 'center'
     },
     btnText: {fontSize: 12, fontWeight: '700', textTransform: 'uppercase'},

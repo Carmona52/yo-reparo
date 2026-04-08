@@ -7,7 +7,6 @@ import {Ionicons} from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import {Buffer} from 'buffer';
 import DateTimePicker from '@react-native-community/datetimepicker';
-
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {supabase} from "@/libs/supabase";
@@ -160,8 +159,6 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
             onClose();
 
             if (job) {
-                console.log('Notificando a admins para la cotización:', job.id);
-
                 supabase.functions.invoke('send-to-admins', {
                     body: {
                         role: 'owner',

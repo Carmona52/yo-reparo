@@ -18,6 +18,8 @@ import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {cotizacionesService} from "@/libs/users/get-cotizacioes";
 import {Cotizacion} from "@/libs/types/cotizaciones";
+import {sendNotificationByID} from "@/libs/notifications/send-notifications";
+import {supabase} from "@/libs/supabase";
 
 export default function QuoteDetailScreen() {
     const {id} = useLocalSearchParams();
@@ -26,6 +28,7 @@ export default function QuoteDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [isImageZoomVisible, setImageZoomVisible] = useState(false);
+    const [profile, setProfile] = useState<{ name: string } | null>(null);
 
     useEffect(() => {
         loadQuote();
@@ -55,9 +58,29 @@ export default function QuoteDetailScreen() {
     const formatDate = (dateString?: string) => {
         if (!dateString) return "No especificada";
         return new Date(dateString).toLocaleDateString('es-ES', {
-            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone:'UTC'
         });
     };
+
+    const fetchProfile = async () => {
+        try {
+            const {data: {session}} = await supabase.auth.getSession();
+            if (session) {
+                const {data} = await supabase
+                    .from('profiles')
+                    .select('name')
+                    .eq('id', session.user.id)
+                    .single();
+                if (data) setProfile(data);
+            }
+        } catch (error) {
+            console.error("Error al cargar perfil:", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchProfile();
+    }, []);
 
     const handleDecision = async (status: 'Aceptada' | 'Rechazada') => {
         const isAccept = status === 'Aceptada';
@@ -73,6 +96,22 @@ export default function QuoteDetailScreen() {
                         setActionLoading(true);
                         try {
                             await cotizacionesService.updateStatus(id as string, status);
+                            supabase.functions.invoke('send-to-admins', {
+                                body: {
+                                    role: 'owner',
+                                    title: `${profile?.name} Ha aceptado la Cotización`,
+                                    body: `${profile?.name || 'Un cliente'} ha aceptado la cotización para: ${quote?.servicio}`,
+                                    data: {
+                                        quoteId: quote?.id,
+
+                                    },
+                                }
+                            }).then(({error: funcError}) => {
+                                if (funcError) console.error('Error enviando notificación:', funcError);
+                                else console.log('Admins notificados correctamente');
+                            });
+
+                            loadQuote()
                             router.back();
                         } catch (e) {
                             Alert.alert("Error", "Ocurrió un problema al actualizar");
@@ -142,7 +181,6 @@ export default function QuoteDetailScreen() {
                     <ThemedText style={styles.quoteId}>Ticket #{id?.toString().slice(-6).toUpperCase()}</ThemedText>
                 </View>
 
-                {/* Card de Información Principal */}
                 <ThemedView style={styles.infoCard}>
                     <DetailRow icon="location-sharp" label="Dirección" value={quote.direccion || 'Sin dirección'}/>
                     <View style={styles.separator}/>

@@ -6,9 +6,10 @@ export interface Cotizacion {
     costo_estimado: string | null;
     evidencia_url: string | null;
     descripcion: string | null;
-    created_by: string;
+    created_by: { name: string; } | null;
     created_at: string;
     job_id?: string | null;
     direccion?: string;
-    fecha_preferida?:string;
+    fecha_preferida?: string;
+    profiles: { id: string, name: string }
 }

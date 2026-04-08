@@ -5,7 +5,7 @@ import {Ionicons} from '@expo/vector-icons';
 import {useRouter} from "expo-router";
 
 import {Cotizacion} from "@/libs/types/cotizaciones";
-import {cotizacionesService} from "@/libs/users/get-cotizacioes"; // Usaremos el mismo servicio pero podrías tener uno de admin
+import {cotizacionesService} from "@/libs/users/get-cotizacioes";
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 
@@ -70,7 +70,7 @@ export default function OwnerCotizacionesScreen() {
                 </View>
 
                 <View style={styles.footer}>
-                    <ThemedText style={styles.clientName}>Cliente ID: {item.created_by.slice(0, 8)}...</ThemedText>
+                    <ThemedText style={styles.clientName}>Cliente ID: {item.created_by?.name}...</ThemedText>
                     <Ionicons name="chevron-forward" size={18} color="#007AFF"/>
                 </View>
             </TouchableOpacity>
