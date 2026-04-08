@@ -18,7 +18,7 @@ export default function OwnerLayout() {
                 }}/>
 
             <Tabs.Screen
-                name="jobs/index"
+                name="jobs"
                 options={{
                     title: 'Trabajos',
                     tabBarIcon: ({color, focused}) => (
@@ -26,16 +26,16 @@ export default function OwnerLayout() {
                     ),
                 }}/>
             <Tabs.Screen
-                name="cotizaciones/index"
+                name="cotizaciones"
                 options={{
                     title: 'Cotizaciones',
-                    tabBarIcon: ({ color, focused }) => (
-                        <Ionicons name={focused ? "document-text" : "document-text-outline"} size={24} color={color} />
+                    tabBarIcon: ({color, focused}) => (
+                        <Ionicons name={focused ? "document-text" : "document-text-outline"} size={24} color={color}/>
                     ),
                 }}/>
 
             <Tabs.Screen
-                name='contactos/index'
+                name='contactos'
                 options={{
                     title: "Contactos",
                     tabBarIcon: ({color, focused}) => (
@@ -44,7 +44,7 @@ export default function OwnerLayout() {
                 }}/>
 
             <Tabs.Screen
-                name="perfil/index"
+                name="perfil"
                 options={{
                     title: 'Perfil',
                     tabBarIcon: ({color, focused}) => (
@@ -53,50 +53,13 @@ export default function OwnerLayout() {
                 }}/>
 
             <Tabs.Screen
-                name="workers/create-worker"
+                name="workers"
                 options={{
-                    href: null,
-                }}/>
-
-            <Tabs.Screen
-                name="jobs/[id]"
-                options={{
-                    href: null,
-                }}/>
-
-            <Tabs.Screen
-                name="workers/index"
-                options={{
-                    href: null,
-                }}/>
-            <Tabs.Screen
-                name="workers/[id]]"
-                options={{
-                    href: null,
-                }}/>
-
-            <Tabs.Screen
-                name="workers/[id]"
-                options={{
-                    href: null,
-                }}/>
-            <Tabs.Screen
-                name="contactos/[id]"
-                options={{
-                    href: null,
-                }}/>
-            <Tabs.Screen
-                name="workers/herramientas/[id]"
-                options={{
-                    href: null,
-                }}/>
-
-
-
-            <Tabs.Screen
-                name="cotizaciones/[id]"
-                options={{
-                    href: null,
+                    title: 'Trabajadores',
+                    tabBarIcon: ({color, focused}) => (
+                        <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color}/>
+                    ),
+                    href:null
                 }}/>
 
         </Tabs>

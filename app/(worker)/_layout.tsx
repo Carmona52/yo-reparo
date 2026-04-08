@@ -18,7 +18,7 @@ export default function OwnerLayout() {
                 }}/>
 
             <Tabs.Screen
-                name="jobs/index"
+                name="jobs"
                 options={{
                     title: 'Trabajos',
                     tabBarIcon: ({color, focused}) => (
@@ -28,7 +28,7 @@ export default function OwnerLayout() {
 
 
             <Tabs.Screen
-                name='contactos/index'
+                name='contactos'
                 options={{
                     title: "Contactos",
                     tabBarIcon: ({color, focused}) => (
@@ -37,7 +37,7 @@ export default function OwnerLayout() {
                 }}/>
 
             <Tabs.Screen
-                name="perfil/index"
+                name="perfil"
                 options={{
                     title: 'Perfil',
                     tabBarIcon: ({color, focused}) => (
@@ -45,23 +45,6 @@ export default function OwnerLayout() {
                     ),
                 }}/>
 
-            <Tabs.Screen
-                name="workers/create-worker"
-                options={{
-                    href: null,
-                }}/>
-
-            <Tabs.Screen
-                name="jobs/[id]"
-                options={{
-                    href: null,
-                }}/>
-
-            <Tabs.Screen
-                name="perfil/herramientas/page"
-                options={{
-                    href: null,
-                }}/>
         </Tabs>
     );
 }

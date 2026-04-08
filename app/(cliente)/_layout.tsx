@@ -1,7 +1,7 @@
 import {Tabs} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 
-export default function OwnerLayout() {
+export default function ClienteLayout() {
     return (
         <Tabs screenOptions={{
             headerShown: false,
@@ -23,7 +23,7 @@ export default function OwnerLayout() {
                 }}/>
 
             <Tabs.Screen
-                name="cotizaciones/index"
+                name="cotizaciones"
                 options={{
                     title: 'Cotizaciones',
                     tabBarIcon: ({ color, focused }) => (
@@ -32,7 +32,7 @@ export default function OwnerLayout() {
                 }} />
 
             <Tabs.Screen
-                name="perfil/index"
+                name="perfil"
                 options={{
                     title: 'Perfil',
                     tabBarIcon: ({color, focused}) => (
@@ -40,13 +40,6 @@ export default function OwnerLayout() {
                     ),
                 }}/>
 
-
-            {/* Pantallas ocultas del Tab Bar */}
-            <Tabs.Screen
-                name="cotizaciones/[id]"
-                options={{
-                    href: null,
-                }} />
 
         </Tabs>
     );

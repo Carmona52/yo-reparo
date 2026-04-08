@@ -21,8 +21,7 @@ export default function ForgotPassword() {
         setLoading(true);
         try {
             const {error} = await supabase.auth.resetPasswordForEmail(email, {
-                // Importante: Configura la URL de redirección en tu dashboard de Supabase
-                redirectTo: 'your-app-scheme://reset-password',
+                redirectTo: 'https://yoreparo-web.vercel.app/reset-password',
             });
             if (error) throw error;
 

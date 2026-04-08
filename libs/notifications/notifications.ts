@@ -1,4 +1,3 @@
-import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import {Platform} from 'react-native';
@@ -48,13 +47,10 @@ export async function registerForPushNotificationsAsync() {
 
     try {
         token = (await Notifications.getExpoPushTokenAsync({projectId})).data;
-        console.log('Expo Push Token obtenido:', token);
     } catch (e) {
         console.log('Error obteniendo el token:', e);
         return;
     }
-
-    console.log('este es tu token: ', token)
 
     if (token) {
         const {data: {user}, error: userError} = await supabase.auth.getUser();

@@ -59,6 +59,7 @@ async function fetchToolsFromSupabase(workerId: string) {
     const { data, error } = await supabase
         .from('herramientas')
         .select('*')
+        .neq('estado','Entregada')
         .eq('worker_id', workerId);
 
     if (error) {
