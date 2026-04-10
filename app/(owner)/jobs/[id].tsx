@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
     View,
     StyleSheet,
@@ -35,9 +35,7 @@ export default function JobDetailScreen() {
     const [updating, setUpdating] = useState(false);
     const [showWorkerList, setShowWorkerList] = useState(false);
     const [imageViewerVisible, setImageViewerVisible] = useState(false);
-
     const textColor = useThemeColor({}, 'text');
-    const cardBackgroundColor = useThemeColor({}, 'background');
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -66,6 +64,8 @@ export default function JobDetailScreen() {
     const handleUpdate = async (updates: { status?: string, worker_id?: string }) => {
         setUpdating(true);
         try {
+            const workerName = workers.find((worker) => worker.id === updates.worker_id);
+            console.log(workerName)
             await updateJob(String(id), updates);
             if (job) setJob({...job, ...updates});
             if (updates.worker_id) setShowWorkerList(false);
@@ -93,21 +93,28 @@ export default function JobDetailScreen() {
         return colors[status.toLowerCase() as keyof typeof colors] || '#666';
     };
 
-    if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large" color="#0a7ea4"/></ThemedView>;
+    if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large"
+                                                                             color="#0a7ea4"/></ThemedView>;
     if (!job) return <ThemedView style={styles.center}><ThemedText>No disponible</ThemedText></ThemedView>;
 
     return (
         <ThemedView style={{flex: 1}}>
-            <View style={styles.topBar}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                    {/* El color del icono ahora responde al modo oscuro/claro */}
-                    <Ionicons name="chevron-back" size={24} color={textColor}/>
+            <View style={styles.headerContainer}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={styles.backBtn}
+                    activeOpacity={0.7}>
+                    <Ionicons name="chevron-back" size={28} color={textColor}/>
                 </TouchableOpacity>
+
+                <View style={styles.titleWrapper}>
+                    <ThemedText type="subtitle" numberOfLines={1}>Detalle del Trabajo</ThemedText>
+                </View>
+
                 <View style={[styles.badge, {backgroundColor: getStatusColor(job.status)}]}>
                     <ThemedText style={styles.badgeText}>{job.status}</ThemedText>
                 </View>
             </View>
-
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
                 <View style={styles.headerSection}>
@@ -159,7 +166,8 @@ export default function JobDetailScreen() {
                     <ThemedText style={styles.label}>Responsable</ThemedText>
                     <TouchableOpacity style={styles.workerSelector} onPress={() => setShowWorkerList(!showWorkerList)}>
                         <View style={styles.workerInfoRow}>
-                            <View style={[styles.avatar, {backgroundColor: assignedWorker ? '#0a7ea4' : 'rgba(150,150,150,0.3)'}]}>
+                            <View
+                                style={[styles.avatar, {backgroundColor: assignedWorker ? '#0a7ea4' : 'rgba(150,150,150,0.3)'}]}>
                                 <ThemedText style={styles.avatarLetter}>{assignedWorker?.name[0] || '?'}</ThemedText>
                             </View>
                             <View>
@@ -245,13 +253,28 @@ const styles = StyleSheet.create({
         paddingBottom: 15,
         backgroundColor: 'transparent',
     },
+    headerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: Platform.OS === 'ios' ? 60 : 20,
+        paddingBottom: 15,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'rgba(150,150,150,0.2)',
+    },
+    titleWrapper: {
+        flex: 1,
+        marginHorizontal: 12,
+        alignItems: 'flex-start',
+    },
     backBtn: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: 12,
         backgroundColor: 'rgba(150,150,150,0.1)',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
     },
     badge: {paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12},
     badgeText: {color: '#fff', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase'},

@@ -18,10 +18,11 @@ import {Buffer} from 'buffer';
 
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
-import {createJobTemporal} from '@/libs/owner/jobs/create-jobs';
+import {createJob} from '@/libs/owner/jobs/create-jobs';
 import {getAllWorkers} from '@/libs/owner/workers/get-workers';
 import {Worker} from '@/libs/types/worker';
 import {supabase} from "@/libs/supabase";
+import {useThemeColor} from '@/hooks/use-theme-color';
 
 interface InitialJobData {
     title?: string;
@@ -31,6 +32,7 @@ interface InitialJobData {
     quoteId?: string;
     fecha_preferida?: string;
     cotizacion_id?: string;
+    costo?: number;
 }
 
 interface CreateJobModalProps {
@@ -45,7 +47,6 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
     const [uploadingImage, setUploadingImage] = useState(false);
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [showWorkerList, setShowWorkerList] = useState(false);
-
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
 
@@ -56,7 +57,8 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
         image_url: '',
         worker_id: null as string | null,
         fecha_cita: new Date(),
-        cotizacion_id: initialData?.cotizacion_id || undefined,
+        cotizacion_id: undefined as string | undefined,
+        price: '',
     });
 
     useEffect(() => {
@@ -76,15 +78,23 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
     useEffect(() => {
         if (visible) {
             if (initialData) {
-                const dateFromQuote = initialData.fecha_preferida ? new Date(initialData.fecha_preferida) : new Date();
+                let dateFromQuote = new Date();
+                if (initialData.fecha_preferida) {
+                    dateFromQuote = new Date(initialData.fecha_preferida);
+                    if (isNaN(dateFromQuote.getTime())) {
+                        dateFromQuote = new Date(initialData.fecha_preferida.replace(' ', 'T'));
+                    }
+                }
+
                 setForm({
                     title: initialData.title || '',
                     description: initialData.description || '',
                     address: initialData.address || '',
                     image_url: initialData.image_url || '',
-                    fecha_cita: isNaN(dateFromQuote.getTime()) ? new Date() : dateFromQuote,
+                    fecha_cita: dateFromQuote,
                     worker_id: null,
                     cotizacion_id: initialData.cotizacion_id,
+                    price: initialData.costo ? initialData.costo.toString() : '',
                 });
             } else {
                 setForm({
@@ -95,10 +105,25 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
                     worker_id: null,
                     fecha_cita: new Date(),
                     cotizacion_id: undefined,
+                    price: '',
                 });
             }
         }
     }, [visible, initialData]);
+
+    const toLocalISOString = (date: Date): string => {
+        const offset = -date.getTimezoneOffset(); // en minutos
+        const sign = offset >= 0 ? '+' : '-';
+        const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, '0');
+
+        return date.getFullYear() +
+            '-' + pad(date.getMonth() + 1) +
+            '-' + pad(date.getDate()) +
+            'T' + pad(date.getHours()) +
+            ':' + pad(date.getMinutes()) +
+            ':' + pad(date.getSeconds()) +
+            sign + pad(offset / 60) + ':' + pad(offset % 60);
+    };
 
     const handlePickImage = async (useCamera: boolean) => {
         const permission = useCamera
@@ -106,20 +131,18 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
             : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (permission.status !== 'granted') {
-            Alert.alert("Permiso denegado", "Se necesitan permisos para acceder a las fotos o cámara.");
+            Alert.alert("Permiso denegado", "Se necesitan permisos para la cámara o galería.");
             return;
         }
 
-        const options: ImagePicker.ImagePickerOptions = {
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.5,
-            base64: true,
-        };
-
         const result = useCamera
-            ? await ImagePicker.launchCameraAsync(options)
-            : await ImagePicker.launchImageLibraryAsync(options);
+            ? await ImagePicker.launchCameraAsync({allowsEditing: true, aspect: [4, 3], quality: 0.5, base64: true})
+            : await ImagePicker.launchImageLibraryAsync({
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.5,
+                base64: true
+            });
 
         if (!result.canceled && result.assets[0].base64) {
             uploadImage(result.assets[0].base64);
@@ -131,24 +154,15 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
         try {
             const fileName = `job_${Date.now()}.jpg`;
             const filePath = `uploads/${fileName}`;
-            const buffer = Buffer.from(base64, 'base64');
-
             const {error} = await supabase.storage
                 .from('jobs')
-                .upload(filePath, buffer, {
-                    contentType: 'image/jpeg',
-                    upsert: true
-                });
+                .upload(filePath, Buffer.from(base64, 'base64'), {contentType: 'image/jpeg'});
 
             if (error) throw error;
-
-            const {data: {publicUrl}} = supabase.storage
-                .from('jobs')
-                .getPublicUrl(filePath);
-
+            const {data: {publicUrl}} = supabase.storage.from('jobs').getPublicUrl(filePath);
             setForm(prev => ({...prev, image_url: publicUrl}));
         } catch (e: any) {
-            Alert.alert("Error de Storage", e.message);
+            Alert.alert("Error de subida", e.message);
         } finally {
             setUploadingImage(false);
         }
@@ -156,20 +170,13 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
 
     const handleSave = async () => {
         if (!form.title || !form.address) {
-            Alert.alert("Campos incompletos", "Título y dirección son obligatorios.");
-            return;
+            return Alert.alert("Campos incompletos", "Título y dirección son requeridos.");
         }
 
         setLoading(true);
         try {
-            const {data: {session}} = await supabase.auth.getSession();
-            let creatorId = session?.user?.id;
-
-            if (!creatorId) {
-                const {data: {user}} = await supabase.auth.getUser();
-                if (!user) throw new Error("No hay una sesión activa.");
-                creatorId = user.id;
-            }
+            const {data: {user}} = await supabase.auth.getUser();
+            if (!user) throw new Error("No hay sesión activa.");
 
             const dataToSave = {
                 title: form.title,
@@ -177,64 +184,48 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
                 address: form.address,
                 image_url: form.image_url,
                 worker_id: form.worker_id,
-                fecha_cita: form.fecha_cita.toISOString(),
-                created_by: creatorId,
+                fecha_cita: toLocalISOString(form.fecha_cita),
+                created_by: user.id,
                 status: 'Pendiente',
                 cotizacion_id: form.cotizacion_id,
+                price: form.price ? parseFloat(form.price) : 0,
             };
 
-            console.log('fecha recibida: ', initialData?.fecha_preferida)
-            console.log('fecha a guardar: ', dataToSave.fecha_cita)
-
-            await createJobTemporal(dataToSave);
-            Alert.alert("¡Éxito!", "Trabajo creado correctamente.");
+            await createJob(dataToSave);
+            Alert.alert("¡Éxito!", "Trabajo guardado.");
             onSuccess();
             onClose();
         } catch (e: any) {
-            Alert.alert("Error al guardar", e.message);
+            Alert.alert("Error", e.message);
         } finally {
             setLoading(false);
         }
     };
 
     const onChangeDate = (event: any, selectedDate?: Date) => {
-        setShowDatePicker(false);
+        if (Platform.OS === 'android') setShowDatePicker(false);
         if (selectedDate && event.type !== 'dismissed') {
-            const updatedDate = new Date(form.fecha_cita);
-            updatedDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-            setForm({...form, fecha_cita: updatedDate});
+            const updated = new Date(form.fecha_cita);
+            updated.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+            setForm(prev => ({...prev, fecha_cita: updated}));
         }
     };
 
-    const onChangeTime = (event: any, selectedDate?: Date) => {
-        setShowTimePicker(false);
-        if (selectedDate && event.type !== 'dismissed') {
-            const updatedDate = new Date(form.fecha_cita);
-            updatedDate.setHours(selectedDate.getHours());
-            updatedDate.setMinutes(selectedDate.getMinutes());
-            updatedDate.setSeconds(0);
-            setForm({...form, fecha_cita: updatedDate});
+    const onChangeTime = (event: any, selectedTime?: Date) => {
+        if (Platform.OS === 'android') setShowTimePicker(false);
+        if (selectedTime && event.type !== 'dismissed') {
+            const updated = new Date(form.fecha_cita);
+            updated.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+            setForm(prev => ({...prev, fecha_cita: updated}));
         }
     };
 
-    const formattedDate = form.fecha_cita.toLocaleDateString('es-ES', {
-        weekday: 'short', day: 'numeric', month: 'short'
-    });
-
-    const formattedTime = form.fecha_cita.toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
-
+    const textColor = useThemeColor({}, 'text');
+    const placeholderColor = "#888888aa";
     const assignedWorker = workers.find(w => w.id === form.worker_id);
 
     return (
-        <Modal
-            visible={visible}
-            animationType="slide"
-            presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
-            onRequestClose={onClose}>
+        <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
             <ThemedView style={styles.container}>
                 <View style={styles.header}>
                     <ThemedText type="title">Nuevo Trabajo</ThemedText>
@@ -244,75 +235,49 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
                 </View>
 
                 <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
-
-                    <ThemedText style={styles.label}>Evidencia o Foto</ThemedText>
+                    <ThemedText style={styles.label}>Foto de Evidencia</ThemedText>
                     <View style={styles.imageContainer}>
-                        {form.image_url ? (
-                            <Image source={{uri: form.image_url}} style={styles.imagePreview}/>
-                        ) : (
-                            <View style={styles.imagePlaceholder}>
-                                <Ionicons name="image-outline" size={40} color="#888"/>
-                                <ThemedText style={{fontSize: 12, opacity: 0.5}}>Sin imagen</ThemedText>
-                            </View>
-                        )}
-                        {uploadingImage && (
-                            <View style={styles.loaderOverlay}>
-                                <ActivityIndicator size="large" color="#0a7ea4"/>
-                            </View>
-                        )}
+                        {form.image_url ? <Image source={{uri: form.image_url}} style={styles.imagePreview}/> :
+                            <Ionicons name="image-outline" size={40} color="#888"/>}
+                        {uploadingImage &&
+                            <View style={styles.loaderOverlay}><ActivityIndicator color="#0a7ea4"/></View>}
                         <View style={styles.imageButtons}>
-                            <TouchableOpacity style={styles.actionBtn} onPress={() => handlePickImage(false)}
-                                              disabled={uploadingImage}>
-                                <Ionicons name="images" size={18} color="#fff"/>
-                                <ThemedText style={styles.actionBtnText}>Galería</ThemedText>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.actionBtn} onPress={() => handlePickImage(true)}
-                                              disabled={uploadingImage}>
-                                <Ionicons name="camera" size={18} color="#fff"/>
-                                <ThemedText style={styles.actionBtnText}>Cámara</ThemedText>
-                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.actionBtn} onPress={() => handlePickImage(false)}><Ionicons
+                                name="images" size={16} color="#fff"/><ThemedText
+                                style={styles.actionBtnText}>Galería</ThemedText></TouchableOpacity>
+                            <TouchableOpacity style={styles.actionBtn} onPress={() => handlePickImage(true)}><Ionicons
+                                name="camera" size={16} color="#fff"/><ThemedText
+                                style={styles.actionBtnText}>Cámara</ThemedText></TouchableOpacity>
                         </View>
                     </View>
 
-                    <ThemedText style={styles.label}>Fecha y Hora de la cita</ThemedText>
+                    <ThemedText style={styles.label}>Programación</ThemedText>
                     <View style={styles.dateTimeRow}>
-                        <TouchableOpacity style={styles.dateTimeBtn} onPress={() => setShowDatePicker(true)}
-                                          disabled={loading}>
-                            <Ionicons name="calendar-outline" size={20} color="#0a7ea4"/>
-                            <ThemedText style={styles.dateTimeText}>{formattedDate}</ThemedText>
+                        <TouchableOpacity style={styles.dateTimeBtn} onPress={() => setShowDatePicker(true)}>
+                            <Ionicons name="calendar-outline" size={18} color="#0a7ea4"/>
+                            <ThemedText
+                                style={styles.dateTimeText}>{form.fecha_cita.toLocaleDateString('es-MX')}</ThemedText>
                         </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.dateTimeBtn} onPress={() => setShowTimePicker(true)}
-                                          disabled={loading}>
-                            <Ionicons name="time-outline" size={20} color="#0a7ea4"/>
-                            <ThemedText style={styles.dateTimeText}>{formattedTime}</ThemedText>
+                        <TouchableOpacity style={styles.dateTimeBtn} onPress={() => setShowTimePicker(true)}>
+                            <Ionicons name="time-outline" size={18} color="#0a7ea4"/>
+                            <ThemedText style={styles.dateTimeText}>{form.fecha_cita.toLocaleTimeString('es-MX', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                            })}</ThemedText>
                         </TouchableOpacity>
                     </View>
 
-                    {showDatePicker && (
-                        <DateTimePicker
-                            value={form.fecha_cita}
-                            mode="date"
-                            display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                            onChange={onChangeDate}
-                            minimumDate={new Date()}
-                            locale="es-ES"
-                        />
-                    )}
-                    {showTimePicker && (
-                        <DateTimePicker
-                            value={form.fecha_cita}
-                            mode="time"
-                            is24Hour={false} // FORZAMOS MODO 12 HORAS EN ANDROID
-                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                            onChange={onChangeTime}
-                            locale="es-ES"
-                        />
-                    )}
+                    {showDatePicker &&
+                        <DateTimePicker value={form.fecha_cita} mode="date" display="default" onChange={onChangeDate}
+                                        minimumDate={new Date()}/>}
+                    {showTimePicker &&
+                        <DateTimePicker value={form.fecha_cita} mode="time" is24Hour={false} display="default"
+                                        onChange={onChangeTime}/>}
 
-                    <ThemedText style={styles.label}>Asignar a un trabajador</ThemedText>
+                    <ThemedText style={styles.label}>Asignación</ThemedText>
                     <View style={styles.assignmentBox}>
-                        <TouchableOpacity style={styles.dropdownTrigger} disabled={loading}
+                        <TouchableOpacity style={styles.dropdownTrigger}
                                           onPress={() => setShowWorkerList(!showWorkerList)}>
                             <View style={styles.workerInfoRow}>
                                 <View
@@ -320,22 +285,13 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
                                     <ThemedText
                                         style={styles.avatarLetter}>{assignedWorker?.name[0] || '?'}</ThemedText>
                                 </View>
-                                <ThemedText type="defaultSemiBold" style={styles.workerNameText}>
-                                    {assignedWorker ? assignedWorker.name : "Sin asignar"}
-                                </ThemedText>
+                                <ThemedText
+                                    type="defaultSemiBold">{assignedWorker ? assignedWorker.name : "Seleccionar trabajador"}</ThemedText>
                             </View>
                             <Ionicons name={showWorkerList ? "chevron-up" : "chevron-down"} size={20} color="#0a7ea4"/>
                         </TouchableOpacity>
-
                         {showWorkerList && (
                             <View style={styles.dropdownContent}>
-                                <TouchableOpacity style={styles.workerOption} onPress={() => {
-                                    setForm({...form, worker_id: null});
-                                    setShowWorkerList(false);
-                                }}>
-                                    <ThemedText style={!form.worker_id && {color: '#0a7ea4', fontWeight: 'bold'}}>Dejar
-                                        pendiente</ThemedText>
-                                </TouchableOpacity>
                                 {workers.map(w => (
                                     <TouchableOpacity key={w.id} style={styles.workerOption} onPress={() => {
                                         setForm({...form, worker_id: w.id});
@@ -345,34 +301,42 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
                                             color: '#0a7ea4',
                                             fontWeight: 'bold'
                                         }}>{w.name}</ThemedText>
-                                        {form.worker_id === w.id &&
-                                            <Ionicons name="checkmark-circle" size={18} color="#0a7ea4"/>}
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         )}
                     </View>
 
-                    <ThemedText style={styles.label}>Título del Servicio</ThemedText>
-                    <TextInput style={styles.input} placeholder="Ej. Reparación de tubería" value={form.title}
-                               onChangeText={(t) => setForm(p => ({...p, title: t}))} editable={!loading}/>
+                    <ThemedText style={styles.label}>Datos del Servicio</ThemedText>
+                    <TextInput style={[styles.input, {color: textColor}]} placeholder="Título"
+                               placeholderTextColor={placeholderColor} value={form.title}
+                               onChangeText={t => setForm(p => ({...p, title: t}))}/>
 
-                    <ThemedText style={styles.label}>Dirección</ThemedText>
-                    <TextInput style={styles.input} placeholder="Calle Poniente #123" value={form.address}
-                               onChangeText={(t) => setForm(p => ({...p, address: t}))} editable={!loading}/>
+                    <ThemedText style={styles.label}>Presupuesto ($)</ThemedText>
+                    <TextInput
+                        style={[styles.input, {color: textColor}]}
+                        placeholder="0.00"
+                        placeholderTextColor={placeholderColor}
+                        keyboardType="numeric"
+                        value={form.price}
+                        onChangeText={t => setForm(p => ({...p, price: t.replace(/[^0-9.]/g, '')}))}
+                    />
 
-                    <ThemedText style={styles.label}>Descripción</ThemedText>
-                    <TextInput style={[styles.input, styles.textArea]} multiline numberOfLines={4}
-                               placeholder="Detalles..." value={form.description}
-                               onChangeText={(t) => setForm(p => ({...p, description: t}))} editable={!loading}/>
+                    <TextInput style={[styles.input, {color: textColor, marginTop: 15}]} placeholder="Dirección"
+                               placeholderTextColor={placeholderColor} value={form.address}
+                               onChangeText={t => setForm(p => ({...p, address: t}))}/>
 
-                    <TouchableOpacity style={[styles.saveBtn, (loading || uploadingImage) && styles.btnDisabled]}
-                                      onPress={handleSave} disabled={loading || uploadingImage}>
+                    <TextInput style={[styles.input, styles.textArea, {color: textColor, marginTop: 15}]} multiline
+                               placeholder="Descripción detallada..." placeholderTextColor={placeholderColor}
+                               value={form.description} onChangeText={t => setForm(p => ({...p, description: t}))}/>
+
+                    <TouchableOpacity style={[styles.saveBtn, loading && styles.btnDisabled]} onPress={handleSave}
+                                      disabled={loading}>
                         {loading ? <ActivityIndicator color="#fff"/> :
-                            <ThemedText style={styles.saveBtnText}>Guardar Trabajo</ThemedText>}
+                            <ThemedText style={styles.saveBtnText}>Confirmar Trabajo</ThemedText>}
                     </TouchableOpacity>
 
-                    <View style={{height: 80}}/>
+                    <View style={{height: 60}}/>
                 </ScrollView>
             </ThemedView>
         </Modal>
@@ -390,20 +354,20 @@ const styles = StyleSheet.create({
         borderBottomColor: 'rgba(150,150,150,0.1)'
     },
     form: {padding: 20},
-    label: {fontSize: 13, fontWeight: 'bold', marginBottom: 8, marginTop: 15, textTransform: 'uppercase', opacity: 0.6},
+    label: {fontSize: 12, fontWeight: 'bold', marginBottom: 8, marginTop: 20, textTransform: 'uppercase', opacity: 0.6},
     input: {backgroundColor: 'rgba(150,150,150,0.1)', borderRadius: 12, padding: 15, fontSize: 16},
     textArea: {height: 100, textAlignVertical: 'top'},
     imageContainer: {
-        width: '100%',
-        height: 200,
-        backgroundColor: 'rgba(150,150,150,0.1)',
+        height: 180,
+        backgroundColor: 'rgba(150,150,150,0.05)',
         borderRadius: 12,
         overflow: 'hidden',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(150,150,150,0.1)'
     },
     imagePreview: {width: '100%', height: '100%'},
-    imagePlaceholder: {alignItems: 'center', gap: 5},
     imageButtons: {position: 'absolute', bottom: 10, flexDirection: 'row', gap: 10},
     actionBtn: {
         flexDirection: 'row',
@@ -414,12 +378,10 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         gap: 5
     },
-    actionBtnText: {color: '#fff', fontSize: 12, fontWeight: 'bold'},
+    actionBtnText: {color: '#fff', fontSize: 11, fontWeight: 'bold'},
     loaderOverlay: {
-        position: 'absolute',
-        backgroundColor: 'rgba(255,255,255,0.7)',
-        width: '100%',
-        height: '100%',
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255,255,255,0.5)',
         justifyContent: 'center',
         alignItems: 'center'
     },
@@ -429,12 +391,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(10, 126, 164, 0.1)',
+        backgroundColor: 'rgba(10, 126, 164, 0.05)',
         padding: 15,
         borderRadius: 12,
-        gap: 8
+        gap: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(10, 126, 164, 0.1)'
     },
-    dateTimeText: {color: '#0a7ea4', fontWeight: 'bold', fontSize: 16, textTransform: 'capitalize'},
+    dateTimeText: {color: '#0a7ea4', fontWeight: '600'},
     assignmentBox: {
         backgroundColor: 'rgba(150, 150, 150, 0.05)',
         padding: 15,
@@ -443,26 +407,12 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(150, 150, 150, 0.1)'
     },
     dropdownTrigger: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-    workerInfoRow: {flexDirection: 'row', alignItems: 'center'},
-    miniAvatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12
-    },
-    avatarLetter: {color: '#fff', fontWeight: 'bold', fontSize: 14},
-    workerNameText: {fontSize: 16},
-    dropdownContent: {marginTop: 15, borderTopWidth: 1, borderColor: 'rgba(150, 150, 150, 0.1)', paddingTop: 10},
-    workerOption: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 12,
-        paddingHorizontal: 5,
-        alignItems: 'center'
-    },
-    saveBtn: {backgroundColor: '#0a7ea4', padding: 18, borderRadius: 16, marginTop: 30, alignItems: 'center'},
-    btnDisabled: {opacity: 0.5},
-    saveBtnText: {color: '#fff', fontWeight: 'bold', fontSize: 16}
+    workerInfoRow: {flexDirection: 'row', alignItems: 'center', gap: 10},
+    miniAvatar: {width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center'},
+    avatarLetter: {color: '#fff', fontWeight: 'bold'},
+    dropdownContent: {marginTop: 10, borderTopWidth: 1, borderColor: 'rgba(150,150,150,0.1)'},
+    workerOption: {paddingVertical: 12},
+    saveBtn: {backgroundColor: '#0a7ea4', padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center'},
+    saveBtnText: {color: '#fff', fontWeight: 'bold', fontSize: 16},
+    btnDisabled: {opacity: 0.5}
 });

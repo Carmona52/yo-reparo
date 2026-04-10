@@ -18,7 +18,6 @@ import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {cotizacionesService} from "@/libs/users/get-cotizacioes";
 import {Cotizacion} from "@/libs/types/cotizaciones";
-import {sendNotificationByID} from "@/libs/notifications/send-notifications";
 import {supabase} from "@/libs/supabase";
 
 export default function QuoteDetailScreen() {
@@ -34,12 +33,29 @@ export default function QuoteDetailScreen() {
         loadQuote();
     }, [id]);
 
+    const fetchProfile = async () => {
+        try {
+            const {data: {session}} = await supabase.auth.getSession();
+            if (session) {
+                const {data} = await supabase
+                    .from('profiles')
+                    .select('name')
+                    .eq('id', session.user.id)
+                    .single();
+                if (data) setProfile(data);
+            }
+        } catch (error) {
+            console.error("Error al cargar perfil:", error);
+        }
+    };
+
     const loadQuote = async () => {
         try {
-            const data = await cotizacionesService.getCotizacionDetails(id as string);
-            if (data && data.length > 0) {
-                setQuote(data[0]);
-            }
+            const [quoteData] = await Promise.all([
+                cotizacionesService.getCotizacionDetails(id as string),
+                fetchProfile()
+            ]);
+            if (quoteData && quoteData.length > 0) setQuote(quoteData[0])
         } catch (e) {
             Alert.alert("Error", "No se pudo cargar la información");
         } finally {
@@ -58,32 +74,17 @@ export default function QuoteDetailScreen() {
     const formatDate = (dateString?: string) => {
         if (!dateString) return "No especificada";
         return new Date(dateString).toLocaleDateString('es-ES', {
-            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone:'UTC'
+            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
         });
     };
 
-    const fetchProfile = async () => {
-        try {
-            const {data: {session}} = await supabase.auth.getSession();
-            if (session) {
-                const {data} = await supabase
-                    .from('profiles')
-                    .select('name')
-                    .eq('id', session.user.id)
-                    .single();
-                if (data) setProfile(data);
-            }
-        } catch (error) {
-            console.error("Error al cargar perfil:", error);
-        }
-    };
-
-    useEffect(() => {
-        fetchProfile();
-    }, []);
 
     const handleDecision = async (status: 'Aceptada' | 'Rechazada') => {
         const isAccept = status === 'Aceptada';
+        const titleMsg = isAccept ? "Ha aceptado la Cotización" : "Ha rechazado la Cotización";
+        const bodyMsg = isAccept
+            ? `${profile?.name || 'Un cliente'} ha aceptado la cotización para: ${quote?.servicio}`
+            : `${profile?.name || 'Un cliente'} ha rechazado la cotización para: ${quote?.servicio}`;
         Alert.alert(
             isAccept ? "Confirmar Presupuesto" : "Rechazar solicitud",
             isAccept ? "¿Deseas proceder con la reparación?" : "¿Estás seguro de rechazar esta cotización?",
@@ -96,22 +97,21 @@ export default function QuoteDetailScreen() {
                         setActionLoading(true);
                         try {
                             await cotizacionesService.updateStatus(id as string, status);
+
                             supabase.functions.invoke('send-to-admins', {
                                 body: {
                                     role: 'owner',
-                                    title: `${profile?.name} Ha aceptado la Cotización`,
-                                    body: `${profile?.name || 'Un cliente'} ha aceptado la cotización para: ${quote?.servicio}`,
+                                    title: `${profile?.name || 'Un cliente'} ${titleMsg}`,
+                                    body: bodyMsg,
                                     data: {
                                         quoteId: quote?.id,
-
                                     },
                                 }
                             }).then(({error: funcError}) => {
                                 if (funcError) console.error('Error enviando notificación:', funcError);
-                                else console.log('Admins notificados correctamente');
                             });
 
-                            loadQuote()
+                            await loadQuote()
                             router.back();
                         } catch (e) {
                             Alert.alert("Error", "Ocurrió un problema al actualizar");
@@ -137,6 +137,20 @@ export default function QuoteDetailScreen() {
                         setActionLoading(true);
                         try {
                             await cotizacionesService.updateStatus(id as string, 'Cancelada');
+                            supabase.functions.invoke('send-to-admins', {
+                                body: {
+                                    role: 'owner',
+                                    title: `${profile?.name || 'Un cliente'} Ha cancelado la Cotización`,
+                                    body: `${profile?.name || 'Un cliente'} ha cancelado la cotización para: ${quote?.servicio}`,
+                                    data: {
+                                        quoteId: quote?.id,
+
+                                    },
+                                }
+                            }).then(({error: funcError}) => {
+                                if (funcError) console.error('Error enviando notificación:', funcError);
+                            });
+                            await loadQuote();
                             router.back();
                         } catch (e) {
                             Alert.alert("Error", "No se pudo cancelar.");
@@ -287,14 +301,12 @@ const styles = StyleSheet.create({
     mainTitle: {fontSize: 28, fontWeight: '800', lineHeight: 34},
     quoteId: {fontSize: 13, opacity: 0.4, marginTop: 4, letterSpacing: 1},
 
-    // TARJETA PRINCIPAL ADAPTABLE
     infoCard: {
         borderRadius: 24,
         padding: 20,
         marginBottom: 30,
         borderWidth: 1,
         borderColor: 'rgba(150,150,150,0.1)',
-        // Sombras suaves
         ...Platform.select({
             ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.05, shadowRadius: 10},
             android: {elevation: 2}
@@ -329,7 +341,6 @@ const styles = StyleSheet.create({
         borderRadius: 12
     },
 
-    // PDF ADAPTABLE
     pdfButton: {
         flexDirection: 'row', alignItems: 'center',
         backgroundColor: 'rgba(255,59,48,0.05)',
@@ -344,7 +355,6 @@ const styles = StyleSheet.create({
     },
     pdfSubtext: {fontSize: 12, opacity: 0.5, marginTop: 2},
 
-    // PRECIO
     priceContainer: {
         alignItems: 'center', paddingVertical: 20,
         backgroundColor: 'rgba(0,122,255,0.08)',
@@ -353,7 +363,6 @@ const styles = StyleSheet.create({
     priceLabel: {fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1},
     priceValue: {fontSize: 32, fontWeight: '900', color: '#007AFF', marginTop: 5},
 
-    // ACCIONES
     footerActions: {flexDirection: 'row', gap: 12, marginTop: 40},
     rejectButton: {
         flex: 1, padding: 20, borderRadius: 18,

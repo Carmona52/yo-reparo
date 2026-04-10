@@ -12,4 +12,5 @@ export interface Cotizacion {
     direccion?: string;
     fecha_preferida?: string;
     profiles: { id: string, name: string }
+    price:number
 }

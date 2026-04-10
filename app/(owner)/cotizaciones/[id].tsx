@@ -9,7 +9,7 @@ import {
     Image,
     Modal,
     TextInput,
-    Linking,
+    Linking, Platform,
 } from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
@@ -40,7 +40,6 @@ export default function OwnerQuoteDetail() {
 
 
     const textColor = useThemeColor({}, 'text');
-
     useEffect(() => {
         loadQuote();
     }, [id]);
@@ -60,7 +59,7 @@ export default function OwnerQuoteDetail() {
     const formatDate = (dateString?: string) => {
         if (!dateString) return "No especificada";
         return new Date(dateString).toLocaleDateString('es-ES', {
-            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone:'UTC'
+            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
         });
     };
 
@@ -105,7 +104,7 @@ export default function OwnerQuoteDetail() {
             const {data: {publicUrl}} = supabase.storage.from('pdfs').getPublicUrl(fileName);
 
             await quotesService.updateQuoteWithEstimate(quoteId, costo, publicUrl);
-            await sendNotificationByID(quote?.profiles?.id as string, `Hola ${quote?.profiles?.name}`,`Tu cotización ${quote?.servicio} está lista`,'data')
+            await sendNotificationByID(quote?.profiles?.id as string, `Hola ${quote?.profiles?.name}`, `Tu cotización ${quote?.servicio} está lista`, 'data')
             Alert.alert("Éxito", "Cotización enviada exitosamente.");
             router.back();
         } catch (e: any) {
@@ -126,7 +125,8 @@ export default function OwnerQuoteDetail() {
         }
     };
 
-    if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large" color="#007AFF"/></ThemedView>;
+    if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large"
+                                                                             color="#007AFF"/></ThemedView>;
     if (!quote) return <ThemedView style={styles.center}><ThemedText>Error al cargar.</ThemedText></ThemedView>;
     const isAsignada = quote.estado?.toLowerCase() === 'asignada';
     const isAceptada = quote.estado?.toLowerCase() === 'aceptada';
@@ -136,11 +136,18 @@ export default function OwnerQuoteDetail() {
     return (
         <ThemedView style={styles.container}>
             <SafeAreaView style={{flex: 1}} edges={['top']}>
-                <View style={styles.headerRow}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                        <Ionicons name="arrow-back" size={24} color="#007AFF"/>
+                <View style={styles.headerContainer}>
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        style={styles.backBtn}
+                        activeOpacity={0.7}>
+                        <Ionicons name="chevron-back" size={28} color={textColor}/>
                     </TouchableOpacity>
-                    <ThemedText type="title">Detalle de Cotización</ThemedText>
+
+                    <View style={styles.titleWrapper}>
+                        <ThemedText type="subtitle" numberOfLines={1}>Detalle de la Cotizacion</ThemedText>
+                    </View>
+
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -179,7 +186,6 @@ export default function OwnerQuoteDetail() {
 
                     <View style={styles.divider}/>
 
-                    {/* LÓGICA DE BOTONES Y MENSAJES SEGÚN ESTADO */}
                     {isAsignada ? (
                         <ThemedView style={styles.assignedCard}>
                             <Ionicons name="briefcase" size={48} color="#007AFF" style={{marginBottom: 10}}/>
@@ -198,7 +204,8 @@ export default function OwnerQuoteDetail() {
                                     onPress={() => Linking.openURL(quote.pdf_url!)}
                                 >
                                     <Ionicons name="document-text" size={20} color="#007AFF"/>
-                                    <ThemedText style={{color: '#007AFF', fontWeight: '600'}}>Ver Cotizacion</ThemedText>
+                                    <ThemedText style={{color: '#007AFF', fontWeight: '600'}}>Ver
+                                        Cotizacion</ThemedText>
                                 </TouchableOpacity>
                             )}
 
@@ -302,6 +309,7 @@ export default function OwnerQuoteDetail() {
                     address: quote.direccion,
                     image_url: quote.evidencia_url as string,
                     fecha_preferida: quote.fecha_preferida as string,
+                    costo:parseFloat(costo)
                 }}
             />
         </ThemedView>
@@ -312,12 +320,34 @@ const styles = StyleSheet.create({
     container: {flex: 1},
     center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
     scrollContent: {paddingHorizontal: 20, paddingBottom: 40},
-    headerRow: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15, gap: 15},
-    backBtn: {padding: 5},
+    headerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: Platform.OS === 'ios' ? 60 : 20,
+        paddingBottom: 15,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'rgba(150,150,150,0.2)',
+    },
+    titleWrapper: {
+        flex: 1,
+        marginHorizontal: 12,
+        alignItems: 'flex-start',
+    },
+    backBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: 'rgba(150,150,150,0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     clientCard: {
         borderRadius: 15, padding: 15, marginBottom: 20, borderWidth: 1,
         borderColor: 'rgba(150,150,150,0.15)', backgroundColor: 'rgba(150,150,150,0.05)', position: 'relative'
     },
+    badge: {paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12},
     statusBadge: {
         position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(0,122,255,0.1)',
         paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10
