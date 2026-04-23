@@ -15,7 +15,7 @@ import {Ionicons} from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import {Buffer} from 'buffer';
 import DateTimePicker from '@react-native-community/datetimepicker';
-
+import { toTimestamp } from '@/utils/date';
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {supabase} from "@/libs/supabase";
@@ -45,25 +45,12 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
 
     const [selectedDate, setSelectedDate] = useState(new Date());
 
-    const toLocalISOString = (date: Date): string => {
-        const offset = -date.getTimezoneOffset();
-        const sign = offset >= 0 ? '+' : '-';
-        const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, '0');
-        return date.getFullYear() +
-            '-' + pad(date.getMonth() + 1) +
-            '-' + pad(date.getDate()) +
-            'T' + pad(date.getHours()) +
-            ':' + pad(date.getMinutes()) +
-            ':' + pad(date.getSeconds()) +
-            sign + pad(offset / 60) + ':' + pad(offset % 60);
-    };
-
     const [form, setForm] = useState({
         servicio: '',
         descripcion: '',
         evidencia_url: '',
         direccion: '',
-        fecha_preferida: toLocalISOString(new Date()),
+        fecha_preferida: toTimestamp(new Date())
     });
 
     const [profile, setProfile] = useState<{ name: string } | null>(null);
@@ -80,7 +67,7 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
                 descripcion: '',
                 evidencia_url: '',
                 direccion: '',
-                fecha_preferida: now.toISOString(),
+                fecha_preferida: toTimestamp(now),
             });
             fetchProfile();
         }
@@ -115,7 +102,7 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
             updatedDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
 
             setSelectedDate(updatedDate);
-            updateForm('fecha_preferida', updatedDate.toISOString());
+            updateForm('fecha_preferida', toTimestamp(updatedDate));
 
             if (Platform.OS === 'android') {
                 setTimeout(() => setShowTimePicker(true), 100);
@@ -130,11 +117,11 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
             updatedDate.setHours(time.getHours(), time.getMinutes());
 
             setSelectedDate(updatedDate);
-            updateForm('fecha_preferida', updatedDate.toISOString());
+            updateForm('fecha_preferida', toTimestamp(updatedDate));
         }
     };
 
-    // Imágenes
+
     const handlePickImage = async (useCamera: boolean) => {
         const {status} = useCamera
             ? await ImagePicker.requestCameraPermissionsAsync()

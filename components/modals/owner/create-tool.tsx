@@ -38,6 +38,7 @@ export default function AddToolModal({ visible, onClose, workerId, onSuccess }: 
                 .insert([
                     {
                         tool: toolName.trim(),
+                        estado:'prestada',
                         worker_id: workerId
                     }
                 ]);

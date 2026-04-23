@@ -15,7 +15,7 @@ import {Ionicons} from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import {Buffer} from 'buffer';
-
+import { toTimestamp } from '@/utils/date';
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {createJob} from '@/libs/owner/jobs/create-jobs';
@@ -111,19 +111,6 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
         }
     }, [visible, initialData]);
 
-    const toLocalISOString = (date: Date): string => {
-        const offset = -date.getTimezoneOffset(); // en minutos
-        const sign = offset >= 0 ? '+' : '-';
-        const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, '0');
-
-        return date.getFullYear() +
-            '-' + pad(date.getMonth() + 1) +
-            '-' + pad(date.getDate()) +
-            'T' + pad(date.getHours()) +
-            ':' + pad(date.getMinutes()) +
-            ':' + pad(date.getSeconds()) +
-            sign + pad(offset / 60) + ':' + pad(offset % 60);
-    };
 
     const handlePickImage = async (useCamera: boolean) => {
         const permission = useCamera
@@ -184,7 +171,7 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
                 address: form.address,
                 image_url: form.image_url,
                 worker_id: form.worker_id,
-                fecha_cita: toLocalISOString(form.fecha_cita),
+                fecha_cita: toTimestamp(form.fecha_cita),
                 created_by: user.id,
                 status: 'Pendiente',
                 cotizacion_id: form.cotizacion_id,

@@ -38,8 +38,7 @@ export async function registerForPushNotificationsAsync() {
         return;
     }
 
-    const projectId =
-        Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+    const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
     if (!projectId) {
         console.error('No se encontró el projectId. Asegúrate de tener configurado EAS.');
         return;

@@ -45,13 +45,31 @@ export default function ProfileScreen() {
                 text: "Salir",
                 style: "destructive",
                 onPress: async () => {
-                    await supabase.auth.signOut();
-                    router.replace("/(auth)/login");
+                    try {
+                        const { data: { user } } = await supabase.auth.getUser();
+
+                        if (user) {
+                            const { error } = await supabase
+                                .from('profiles')
+                                .update({ expo_token: null })
+                                .eq('id', user.id);
+
+                            if (error) {
+                                console.error("Error limpiando el token de Expo:", error.message);
+                            } else {
+                                console.log("Token de Expo removido exitosamente.");
+                            }
+                        }
+                    } catch (error: any) {
+                        console.error("Error inesperado al limpiar el token:", error.message);
+                    } finally {
+                        await supabase.auth.signOut();
+                        router.replace("/(auth)/login");
+                    }
                 }
             }
         ]);
     }
-
     const handleWhatsAppPress = async () => {
         const phoneNumber = "522382288483";
         const message = "Hola Yo Reparo, necesito ayuda con problemas dentro de la app";

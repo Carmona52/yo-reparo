@@ -12,5 +12,8 @@ export interface Cotizacion {
     direccion?: string;
     fecha_preferida?: string;
     profiles: { id: string, name: string }
-    price:number
+    price:number,
+    en_apelacion?: boolean;
+    apelacion_usada?: boolean;
+    apelacion_estado?: 'activa' | 'aceptada' | 'cerrada_sin_acuerdo' | null;
 }

@@ -13,12 +13,13 @@ import {
 } from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
-
+import {formatDateTime} from '@/utils/date';
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {cotizacionesService} from "@/libs/users/get-cotizacioes";
 import {Cotizacion} from "@/libs/types/cotizaciones";
 import {supabase} from "@/libs/supabase";
+import {ApelacionModal} from "@/components/cotizaciones/apelacion-modal";
 
 export default function QuoteDetailScreen() {
     const {id} = useLocalSearchParams();
@@ -28,6 +29,7 @@ export default function QuoteDetailScreen() {
     const [actionLoading, setActionLoading] = useState(false);
     const [isImageZoomVisible, setImageZoomVisible] = useState(false);
     const [profile, setProfile] = useState<{ name: string } | null>(null);
+    const [showApelacion, setShowApelacion] = useState(false);
 
     useEffect(() => {
         loadQuote();
@@ -55,7 +57,7 @@ export default function QuoteDetailScreen() {
                 cotizacionesService.getCotizacionDetails(id as string),
                 fetchProfile()
             ]);
-            if (quoteData && quoteData.length > 0) setQuote(quoteData[0])
+            if (quoteData && quoteData.length > 0) setQuote(quoteData[0]);
         } catch (e) {
             Alert.alert("Error", "No se pudo cargar la información");
         } finally {
@@ -71,20 +73,13 @@ export default function QuoteDetailScreen() {
         return '#FF3B30';
     };
 
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return "No especificada";
-        return new Date(dateString).toLocaleDateString('es-ES', {
-            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
-        });
-    };
-
-
     const handleDecision = async (status: 'Aceptada' | 'Rechazada') => {
         const isAccept = status === 'Aceptada';
         const titleMsg = isAccept ? "Ha aceptado la Cotización" : "Ha rechazado la Cotización";
         const bodyMsg = isAccept
             ? `${profile?.name || 'Un cliente'} ha aceptado la cotización para: ${quote?.servicio}`
             : `${profile?.name || 'Un cliente'} ha rechazado la cotización para: ${quote?.servicio}`;
+
         Alert.alert(
             isAccept ? "Confirmar Presupuesto" : "Rechazar solicitud",
             isAccept ? "¿Deseas proceder con la reparación?" : "¿Estás seguro de rechazar esta cotización?",
@@ -98,20 +93,17 @@ export default function QuoteDetailScreen() {
                         try {
                             await cotizacionesService.updateStatus(id as string, status);
 
-                            supabase.functions.invoke('send-to-admins', {
+                            const {error: funcError} = await supabase.functions.invoke('send-to-admins', {
                                 body: {
                                     role: 'owner',
                                     title: `${profile?.name || 'Un cliente'} ${titleMsg}`,
                                     body: bodyMsg,
-                                    data: {
-                                        quoteId: quote?.id,
-                                    },
+                                    data: {quoteId: quote?.id},
                                 }
-                            }).then(({error: funcError}) => {
-                                if (funcError) console.error('Error enviando notificación:', funcError);
                             });
+                            if (funcError) console.error('Error enviando notificación:', funcError);
 
-                            await loadQuote()
+                            await loadQuote();
                             router.back();
                         } catch (e) {
                             Alert.alert("Error", "Ocurrió un problema al actualizar");
@@ -137,19 +129,17 @@ export default function QuoteDetailScreen() {
                         setActionLoading(true);
                         try {
                             await cotizacionesService.updateStatus(id as string, 'Cancelada');
-                            supabase.functions.invoke('send-to-admins', {
+
+                            const {error: funcError} = await supabase.functions.invoke('send-to-admins', {
                                 body: {
                                     role: 'owner',
                                     title: `${profile?.name || 'Un cliente'} Ha cancelado la Cotización`,
                                     body: `${profile?.name || 'Un cliente'} ha cancelado la cotización para: ${quote?.servicio}`,
-                                    data: {
-                                        quoteId: quote?.id,
-
-                                    },
+                                    data: {quoteId: quote?.id},
                                 }
-                            }).then(({error: funcError}) => {
-                                if (funcError) console.error('Error enviando notificación:', funcError);
                             });
+                            if (funcError) console.error('Error enviando notificación:', funcError);
+
                             await loadQuote();
                             router.back();
                         } catch (e) {
@@ -163,17 +153,28 @@ export default function QuoteDetailScreen() {
         );
     };
 
-    if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large"
-                                                                             color="#007AFF"/></ThemedView>;
-    if (!quote) return <ThemedView style={styles.center}><ThemedText>No se encontró
-        información.</ThemedText></ThemedView>;
+    if (loading) return (
+        <ThemedView style={styles.center}>
+            <ActivityIndicator size="large" color="#007AFF"/>
+        </ThemedView>
+    );
 
-    const isAcceptedOrFinished = quote.estado.toLowerCase().includes('aceptada') || quote.estado.toLowerCase().includes('terminado');
+    if (!quote) return (
+        <ThemedView style={styles.center}>
+            <ThemedText>No se encontró información.</ThemedText>
+        </ThemedView>
+    );
+
+    const isAcceptedOrFinished =
+        quote.estado.toLowerCase().includes('aceptada') ||
+        quote.estado.toLowerCase().includes('terminado');
     const canDelete = !isAcceptedOrFinished;
 
     return (
         <ThemedView style={styles.container}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+
+                {/* ── Header ── */}
                 <View style={styles.header}>
                     <View style={styles.headerTopRow}>
                         <View style={[styles.statusBadge, {backgroundColor: `${getStatusColor(quote.estado)}15`}]}>
@@ -184,35 +185,50 @@ export default function QuoteDetailScreen() {
                         </View>
 
                         {canDelete && (
-                            <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}
-                                              disabled={actionLoading}>
+                            <TouchableOpacity
+                                style={styles.deleteButton}
+                                onPress={handleDelete}
+                                disabled={actionLoading}
+                            >
                                 <Ionicons name="trash-outline" size={20} color="#FF3B30"/>
                             </TouchableOpacity>
                         )}
                     </View>
 
                     <ThemedText type="title" style={styles.mainTitle}>{quote.servicio}</ThemedText>
-                    <ThemedText style={styles.quoteId}>Ticket #{id?.toString().slice(-6).toUpperCase()}</ThemedText>
+                    <ThemedText style={styles.quoteId}>
+                        Ticket #{id?.toString().slice(-6).toUpperCase()}
+                    </ThemedText>
                 </View>
 
+                {/* ── Info card ── */}
                 <ThemedView style={styles.infoCard}>
                     <DetailRow icon="location-sharp" label="Dirección" value={quote.direccion || 'Sin dirección'}/>
                     <View style={styles.separator}/>
-                    <DetailRow icon="time" label="Programado" value={formatDate(quote.fecha_preferida)}/>
+                    <DetailRow icon="time" label="Programado" value={formatDateTime(quote.fecha_preferida)}/>
                 </ThemedView>
 
+                {/* ── Descripción ── */}
                 <View style={styles.section}>
-                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Descripción del problema</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                        Descripción del problema
+                    </ThemedText>
                     <View style={styles.descContainer}>
                         <ThemedText style={styles.descText}>{quote.descripcion}</ThemedText>
                     </View>
                 </View>
 
+                {/* ── Evidencia ── */}
                 {quote.evidencia_url && (
                     <View style={styles.section}>
-                        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Evidencia visual</ThemedText>
-                        <TouchableOpacity activeOpacity={0.9} onPress={() => setImageZoomVisible(true)}
-                                          style={styles.imageCard}>
+                        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                            Evidencia visual
+                        </ThemedText>
+                        <TouchableOpacity
+                            activeOpacity={0.9}
+                            onPress={() => setImageZoomVisible(true)}
+                            style={styles.imageCard}
+                        >
                             <Image source={{uri: quote.evidencia_url}} style={styles.evidenceImage}/>
                             <View style={styles.zoomBadge}>
                                 <Ionicons name="expand" size={18} color="#FFF"/>
@@ -221,8 +237,12 @@ export default function QuoteDetailScreen() {
                     </View>
                 )}
 
+                {/* ── PDF ── */}
                 {quote.pdf_url && (
-                    <TouchableOpacity style={styles.pdfButton} onPress={() => Linking.openURL(quote.pdf_url!)}>
+                    <TouchableOpacity
+                        style={styles.pdfButton}
+                        onPress={() => Linking.openURL(quote.pdf_url!)}
+                    >
                         <View style={styles.pdfIconContainer}>
                             <Ionicons name="document-text" size={24} color="#FF3B30"/>
                         </View>
@@ -234,41 +254,93 @@ export default function QuoteDetailScreen() {
                     </TouchableOpacity>
                 )}
 
-                <View style={styles.priceContainer}>
-                    <ThemedText style={styles.priceLabel}>Costo estimado</ThemedText>
-                    <ThemedText type="title" style={styles.priceValue}>
-                        {quote.costo_estimado ? `$${quote.costo_estimado}` : 'Por definir'}
-                    </ThemedText>
-                </View>
 
                 {quote.estado === 'Enviada' && !actionLoading && (
                     <View style={styles.footerActions}>
-                        <TouchableOpacity style={styles.rejectButton} onPress={() => handleDecision('Rechazada')}>
+                        <TouchableOpacity
+                            style={styles.rejectButton}
+                            onPress={() => handleDecision('Rechazada')}
+                        >
                             <ThemedText style={styles.rejectText}>Rechazar</ThemedText>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.acceptButton} onPress={() => handleDecision('Aceptada')}>
-                            <ThemedText style={styles.acceptText}>Confirmar y Agendar</ThemedText>
+                        <TouchableOpacity
+                            style={styles.acceptButton}
+                            onPress={() => handleDecision('Aceptada')}
+                        >
+                            <ThemedText style={styles.acceptText}>Aceptar</ThemedText>
                         </TouchableOpacity>
                     </View>
                 )}
+                {quote.estado === 'Enviada' && quote.costo_estimado && (
+                    <TouchableOpacity
+                        style={[
+                            styles.apelarBtn,
+                            quote.apelacion_estado === 'cerrada_sin_acuerdo' && styles.apelarBtnCerrado,
+                        ]}
+                        onPress={() => setShowApelacion(true)}
+                    >
+                        <Ionicons
+                            name={quote.apelacion_estado === 'activa' ? 'chatbubbles' : 'chatbubbles-outline'}
+                            size={18}
+                            color={quote.apelacion_estado === 'cerrada_sin_acuerdo' ? '#8E8E93' : '#1565C0'}
+                        />
+                        <ThemedText style={[
+                            styles.apelarBtnText,
+                            quote.apelacion_estado === 'cerrada_sin_acuerdo' && styles.apelarBtnTextCerrado,
+                        ]}>
+                            {quote.apelacion_estado === 'activa'
+                                ? 'Apelación en curso'
+                                : quote.apelacion_estado === 'cerrada_sin_acuerdo'
+                                    ? 'Ver apelación cerrada'
+                                    : quote.apelacion_usada
+                                        ? 'Ver historial de apelación'
+                                        : 'Apelar precio'}
+                        </ThemedText>
+                    </TouchableOpacity>
+                )}
+
+
 
                 {actionLoading && <ActivityIndicator color="#007AFF" style={{marginTop: 30}}/>}
                 <View style={{height: 40}}/>
             </ScrollView>
 
+            {/* ── Modal zoom imagen ── */}
             <Modal visible={isImageZoomVisible} transparent={true} animationType="fade">
                 <View style={styles.modalOverlay}>
                     <TouchableOpacity style={styles.closeBtn} onPress={() => setImageZoomVisible(false)}>
                         <Ionicons name="close" size={30} color="#FFF"/>
                     </TouchableOpacity>
-                    <Image source={{uri: quote.evidencia_url || ''}} style={styles.fullImage} resizeMode="contain"/>
+                    <Image
+                        source={{uri: quote.evidencia_url || ''}}
+                        style={styles.fullImage}
+                        resizeMode="contain"
+                    />
                 </View>
             </Modal>
+
+            <ApelacionModal
+                visible={showApelacion}
+                onClose={() => setShowApelacion(false)}
+                cotizacionId={quote.id}
+                costoActual={quote.costo_estimado ?? '0'}
+                apelacionUsada={quote.apelacion_usada ?? false}
+                apelacionEstado={quote.apelacion_estado ?? null}
+                onPrecioAceptado={(nuevoPrecio) => {
+                    setQuote(prev => prev ? {
+                        ...prev,
+                        costo_estimado: nuevoPrecio.toString(),
+                        estado: 'Aceptada',
+                        en_apelacion: false,
+                        apelacion_estado: 'aceptada',
+                    } : prev);
+                }}
+            />
         </ThemedView>
     );
 }
 
-function DetailRow({icon, label, value}: { icon: any, label: string, value: string }) {
+function DetailRow({icon, label, value}: { icon: any; label: string; value: string }) {
     return (
         <View style={styles.detailRow}>
             <View style={styles.detailIconBg}>
@@ -286,14 +358,15 @@ const styles = StyleSheet.create({
     container: {flex: 1},
     center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
     scrollContent: {padding: 25},
+
     header: {marginBottom: 25},
-    headerTopRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12},
+    headerTopRow: {
+        flexDirection: 'row', justifyContent: 'space-between',
+        alignItems: 'center', marginBottom: 12,
+    },
     statusBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12,
     },
     statusDot: {width: 6, height: 6, borderRadius: 3, marginRight: 8},
     statusText: {fontSize: 11, fontWeight: '900', letterSpacing: 0.5},
@@ -302,21 +375,18 @@ const styles = StyleSheet.create({
     quoteId: {fontSize: 13, opacity: 0.4, marginTop: 4, letterSpacing: 1},
 
     infoCard: {
-        borderRadius: 24,
-        padding: 20,
-        marginBottom: 30,
-        borderWidth: 1,
-        borderColor: 'rgba(150,150,150,0.1)',
+        borderRadius: 24, padding: 20, marginBottom: 30,
+        borderWidth: 1, borderColor: 'rgba(150,150,150,0.1)',
         ...Platform.select({
             ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.05, shadowRadius: 10},
-            android: {elevation: 2}
-        })
+            android: {elevation: 2},
+        }),
     },
     detailRow: {flexDirection: 'row', alignItems: 'center'},
     detailIconBg: {
         width: 36, height: 36, borderRadius: 10,
         backgroundColor: 'rgba(0,122,255,0.1)',
-        justifyContent: 'center', alignItems: 'center'
+        justifyContent: 'center', alignItems: 'center',
     },
     detailLabel: {fontSize: 11, opacity: 0.5, textTransform: 'uppercase'},
     detailValue: {fontSize: 15, marginTop: 1},
@@ -327,18 +397,15 @@ const styles = StyleSheet.create({
     descContainer: {
         backgroundColor: 'rgba(150,150,150,0.05)',
         padding: 16, borderRadius: 16,
-        borderLeftWidth: 4, borderLeftColor: '#007AFF'
+        borderLeftWidth: 4, borderLeftColor: '#007AFF',
     },
     descText: {fontSize: 15, lineHeight: 24, opacity: 0.8},
+
     imageCard: {borderRadius: 20, overflow: 'hidden', height: 200, backgroundColor: 'rgba(150,150,150,0.1)'},
     evidenceImage: {width: '100%', height: '100%'},
     zoomBadge: {
-        position: 'absolute',
-        bottom: 15,
-        right: 15,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        padding: 8,
-        borderRadius: 12
+        position: 'absolute', bottom: 15, right: 15,
+        backgroundColor: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 12,
     },
 
     pdfButton: {
@@ -346,37 +413,53 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,59,48,0.05)',
         padding: 16, borderRadius: 20,
         borderWidth: 1, borderColor: 'rgba(255,59,48,0.1)',
-        marginBottom: 30
+        marginBottom: 30,
     },
     pdfIconContainer: {
         width: 48, height: 48, borderRadius: 14,
         backgroundColor: 'rgba(255,255,255,0.15)',
-        justifyContent: 'center', alignItems: 'center'
+        justifyContent: 'center', alignItems: 'center',
     },
     pdfSubtext: {fontSize: 12, opacity: 0.5, marginTop: 2},
 
     priceContainer: {
         alignItems: 'center', paddingVertical: 20,
         backgroundColor: 'rgba(0,122,255,0.08)',
-        borderRadius: 24, borderStyle: 'dashed', borderWidth: 1, borderColor: '#007AFF'
+        borderRadius: 24, borderStyle: 'dashed',
+        borderWidth: 1, borderColor: '#007AFF',
     },
     priceLabel: {fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1},
     priceValue: {fontSize: 32, fontWeight: '900', color: '#007AFF', marginTop: 5},
 
-    footerActions: {flexDirection: 'row', gap: 12, marginTop: 40},
+    // Apelación
+    apelarBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: 8, padding: 16, borderRadius: 14, marginTop: 16,
+        backgroundColor: 'rgba(21,101,192,0.08)',
+        borderWidth: 1, borderColor: 'rgba(21,101,192,0.2)',
+    },
+    apelarBtnCerrado: {
+        backgroundColor: 'rgba(142,142,147,0.08)',
+        borderColor: 'rgba(142,142,147,0.2)',
+    },
+    apelarBtnText: {color: '#1565C0', fontWeight: '700', fontSize: 15},
+    apelarBtnTextCerrado: {color: '#8E8E93'},
+
+    footerActions: {flexDirection: 'row', gap: 12, marginTop: 24},
     rejectButton: {
         flex: 1, padding: 20, borderRadius: 18,
         alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'rgba(255,59,48,0.1)'
+        backgroundColor: 'rgba(255,59,48,0.1)',
     },
     rejectText: {color: '#FF3B30', fontWeight: '700'},
     acceptButton: {
         flex: 2, padding: 20, borderRadius: 18,
         alignItems: 'center', justifyContent: 'center',
-        backgroundColor: '#007AFF'
+        backgroundColor: '#007AFF',
     },
     acceptText: {color: '#FFF', fontWeight: '700', fontSize: 16},
+
     modalOverlay: {flex: 1, backgroundColor: '#000', justifyContent: 'center'},
     closeBtn: {position: 'absolute', top: 50, right: 25, zIndex: 10, padding: 10},
-    fullImage: {width: '100%', height: '80%'}
+    fullImage: {width: '100%', height: '80%'},
 });

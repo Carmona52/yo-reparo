@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Alert, ScrollView, Platform, useColorScheme } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import React, {useState, useEffect} from 'react';
+import {StyleSheet, View, TouchableOpacity, Alert, ScrollView, Platform, useColorScheme} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {Ionicons} from '@expo/vector-icons';
+import {useRouter} from 'expo-router';
 
-import { ThemedView } from "@/components/themed-view";
-import { ThemedText } from "@/components/themed-text";
-import { supabase } from "@/libs/supabase";
+import {ThemedView} from "@/components/themed-view";
+import {ThemedText} from "@/components/themed-text";
+import {supabase} from "@/libs/supabase";
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -20,13 +20,15 @@ export default function ProfileScreen() {
 
     async function getProfile() {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const {data: {user}} = await supabase.auth.getUser();
+
             if (user) {
-                const { data, error } = await supabase
+                const {data, error} = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', user.id)
                     .single();
+
                 if (error) throw error;
                 setProfile(data);
             }
@@ -38,14 +40,33 @@ export default function ProfileScreen() {
     }
 
     async function handleSignOut() {
-        Alert.alert("Cerrar Sesión", "¿Estás seguro de que quieres salir de Yo Reparo?", [
-            { text: "Cancelar", style: "cancel" },
+        Alert.alert("Cerrar Sesión", "¿Estás seguro de que quieres salir?", [
+            {text: "Cancelar", style: "cancel"},
             {
-                text: "Cerrar Sesión",
+                text: "Salir",
                 style: "destructive",
                 onPress: async () => {
-                    await supabase.auth.signOut();
-                    router.replace("/(auth)/login");
+                    try {
+                        const {data: {user}} = await supabase.auth.getUser();
+
+                        if (user) {
+                            const {error} = await supabase
+                                .from('profiles')
+                                .update({expo_token: null})
+                                .eq('id', user.id);
+
+                            if (error) {
+                                console.error("Error limpiando el token de Expo:", error.message);
+                            } else {
+                                console.log("Token de Expo removido exitosamente.");
+                            }
+                        }
+                    } catch (error: any) {
+                        console.error("Error inesperado al limpiar el token:", error.message);
+                    } finally {
+                        await supabase.auth.signOut();
+                        router.replace("/(auth)/login");
+                    }
                 }
             }
         ]);
@@ -60,15 +81,15 @@ export default function ProfileScreen() {
     }
 
     return (
-        <ThemedView style={{ flex: 1 }}>
-            <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <ThemedView style={{flex: 1}}>
+            <SafeAreaView style={{flex: 1}} edges={['top']}>
                 <ScrollView showsVerticalScrollIndicator={false}>
                     <View style={styles.container}>
                         {/* Header de Perfil */}
                         <View style={styles.header}>
-                            <View style={[styles.avatarCircle, { backgroundColor: isDark ? '#1c1c1e' : '#f0f2f5' }]}>
-                                <Ionicons name="person" size={50} color="#0a7ea4" />
-                                <View style={styles.onlineBadge} />
+                            <View style={[styles.avatarCircle, {backgroundColor: isDark ? '#1c1c1e' : '#f0f2f5'}]}>
+                                <Ionicons name="person" size={50} color="#0a7ea4"/>
+                                <View style={styles.onlineBadge}/>
                             </View>
 
                             <ThemedText type="title" style={styles.userName}>
@@ -83,7 +104,7 @@ export default function ProfileScreen() {
                         </View>
 
                         {/* Tarjeta de Información */}
-                        <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff' }]}>
+                        <View style={[styles.infoCard, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff'}]}>
                             <ProfileItem
                                 icon="call"
                                 label="Teléfono de contacto"
@@ -106,17 +127,17 @@ export default function ProfileScreen() {
                                 activeOpacity={0.8}
                                 onPress={() => router.push("/perfil/herramientas/page")}>
                                 <View style={styles.iconCircle}>
-                                    <Ionicons name="hammer" size={20} color="#fff" />
+                                    <Ionicons name="hammer" size={20} color="#fff"/>
                                 </View>
                                 <ThemedText style={styles.toolsText}>Herramientas Prestadas</ThemedText>
-                                <Ionicons name="chevron-forward" size={20} color="#fff" style={{ opacity: 0.7 }} />
+                                <Ionicons name="chevron-forward" size={20} color="#fff" style={{opacity: 0.7}}/>
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={[styles.signOutButton, { backgroundColor: isDark ? 'rgba(255, 68, 68, 0.1)' : '#fff5f5' }]}
+                                style={[styles.signOutButton, {backgroundColor: isDark ? 'rgba(255, 68, 68, 0.1)' : '#fff5f5'}]}
                                 activeOpacity={0.7}
                                 onPress={handleSignOut}>
-                                <Ionicons name="log-out-outline" size={22} color="#ff4444" />
+                                <Ionicons name="log-out-outline" size={22} color="#ff4444"/>
                                 <ThemedText style={styles.signOutText}>Cerrar Sesión</ThemedText>
                             </TouchableOpacity>
                         </View>
@@ -129,13 +150,19 @@ export default function ProfileScreen() {
     );
 }
 
-function ProfileItem({ icon, label, value, isDark, isLast }: { icon: any, label: string, value: string, isDark: boolean, isLast?: boolean }) {
+function ProfileItem({icon, label, value, isDark, isLast}: {
+    icon: any,
+    label: string,
+    value: string,
+    isDark: boolean,
+    isLast?: boolean
+}) {
     return (
-        <View style={[styles.infoItem, isLast && { borderBottomWidth: 0 }]}>
-            <View style={[styles.itemIconContainer, { backgroundColor: isDark ? 'rgba(10, 126, 164, 0.2)' : '#e1f5fe' }]}>
-                <Ionicons name={icon} size={20} color="#0a7ea4" />
+        <View style={[styles.infoItem, isLast && {borderBottomWidth: 0}]}>
+            <View style={[styles.itemIconContainer, {backgroundColor: isDark ? 'rgba(10, 126, 164, 0.2)' : '#e1f5fe'}]}>
+                <Ionicons name={icon} size={20} color="#0a7ea4"/>
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={{flex: 1}}>
                 <ThemedText style={styles.infoLabel}>{label}</ThemedText>
                 <ThemedText style={styles.infoValue}>{value}</ThemedText>
             </View>
@@ -144,10 +171,10 @@ function ProfileItem({ icon, label, value, isDark, isLast }: { icon: any, label:
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 24 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    container: {flex: 1, padding: 24},
+    center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
 
-    header: { alignItems: 'center', marginVertical: 20 },
+    header: {alignItems: 'center', marginVertical: 20},
     avatarCircle: {
         width: 100,
         height: 100,
@@ -169,22 +196,22 @@ const styles = StyleSheet.create({
         borderWidth: 3,
         borderColor: '#fff', // Idealmente usar el color de fondo dinámico
     },
-    userName: { fontSize: 26, fontWeight: 'bold', marginBottom: 8 },
+    userName: {fontSize: 26, fontWeight: 'bold', marginBottom: 8},
     roleContainer: {
         backgroundColor: 'rgba(10, 126, 164, 0.1)',
         paddingHorizontal: 16,
         paddingVertical: 6,
         borderRadius: 12,
     },
-    roleText: { color: '#0a7ea4', fontSize: 11, fontWeight: '800', letterSpacing: 1 },
+    roleText: {color: '#0a7ea4', fontSize: 11, fontWeight: '800', letterSpacing: 1},
 
     infoCard: {
         borderRadius: 24,
         padding: 16,
         marginTop: 10,
         ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 },
-            android: { elevation: 2 }
+            ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.05, shadowRadius: 10},
+            android: {elevation: 2}
         })
     },
     infoItem: {
@@ -202,10 +229,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginRight: 15
     },
-    infoLabel: { fontSize: 11, opacity: 0.5, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 2 },
-    infoValue: { fontSize: 16, fontWeight: '600' },
+    infoLabel: {fontSize: 11, opacity: 0.5, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 2},
+    infoValue: {fontSize: 16, fontWeight: '600'},
 
-    actionsContainer: { marginTop: 30, gap: 15 },
+    actionsContainer: {marginTop: 30, gap: 15},
     toolsButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -222,7 +249,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center'
     },
-    toolsText: { color: '#fff', fontWeight: 'bold', fontSize: 16, flex: 1 },
+    toolsText: {color: '#fff', fontWeight: 'bold', fontSize: 16, flex: 1},
 
     signOutButton: {
         flexDirection: 'row',
@@ -233,6 +260,6 @@ const styles = StyleSheet.create({
         gap: 10,
         marginTop: 10
     },
-    signOutText: { color: '#ff4444', fontWeight: 'bold', fontSize: 15 },
-    versionText: { textAlign: 'center', marginTop: 40, opacity: 0.3, fontSize: 12 }
+    signOutText: {color: '#ff4444', fontWeight: 'bold', fontSize: 15},
+    versionText: {textAlign: 'center', marginTop: 40, opacity: 0.3, fontSize: 12}
 });

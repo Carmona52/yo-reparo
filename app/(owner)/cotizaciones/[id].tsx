@@ -15,7 +15,7 @@ import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import {SafeAreaView} from 'react-native-safe-area-context';
-
+import { formatDateTime } from '@/utils/date';
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {useThemeColor} from '@/hooks/use-theme-color';
@@ -37,6 +37,7 @@ export default function OwnerQuoteDetail() {
     const [isCreateJobVisible, setCreateJobVisible] = useState(false);
     const [costo, setCosto] = useState('');
     const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerResult | null>(null);
+    const [showApelacion, setShowApelacion] = useState(false);
 
 
     const textColor = useThemeColor({}, 'text');
@@ -167,7 +168,7 @@ export default function OwnerQuoteDetail() {
                         </View>
                         <View style={styles.infoLine}>
                             <Ionicons name="calendar" size={16} color="#007AFF"/>
-                            <ThemedText style={styles.infoText}>{formatDate(quote.fecha_preferida)}</ThemedText>
+                            <ThemedText style={styles.infoText}>{formatDateTime(quote.fecha_preferida)}</ThemedText>
                         </View>
                     </ThemedView>
 
@@ -312,6 +313,8 @@ export default function OwnerQuoteDetail() {
                     costo:parseFloat(costo)
                 }}
             />
+
+
         </ThemedView>
     );
 }

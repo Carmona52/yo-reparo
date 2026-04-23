@@ -31,10 +31,10 @@ export default function ProfileScreen() {
 
     async function getProfile() {
         try {
-            const {data: {user}} = await supabase.auth.getUser();
+            const { data: { user } } = await supabase.auth.getUser();
 
             if (user) {
-                const {data, error} = await supabase
+                const { data, error } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', user.id)
@@ -52,13 +52,32 @@ export default function ProfileScreen() {
 
     async function handleSignOut() {
         Alert.alert("Cerrar Sesión", "¿Estás seguro de que quieres salir?", [
-            {text: "Cancelar", style: "cancel"},
+            { text: "Cancelar", style: "cancel" },
             {
                 text: "Salir",
                 style: "destructive",
                 onPress: async () => {
-                    await supabase.auth.signOut();
-                    router.replace("/(auth)/login");
+                    try {
+                        const { data: { user } } = await supabase.auth.getUser();
+
+                        if (user) {
+                            const { error } = await supabase
+                                .from('profiles')
+                                .update({ expo_token: null })
+                                .eq('id', user.id);
+
+                            if (error) {
+                                console.error("Error limpiando el token de Expo:", error.message);
+                            } else {
+                                console.log("Token de Expo removido exitosamente.");
+                            }
+                        }
+                    } catch (error: any) {
+                        console.error("Error inesperado al limpiar el token:", error.message);
+                    } finally {
+                        await supabase.auth.signOut();
+                        router.replace("/(auth)/login");
+                    }
                 }
             }
         ]);
