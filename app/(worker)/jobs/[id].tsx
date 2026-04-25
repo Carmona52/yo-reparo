@@ -21,6 +21,7 @@ import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {updateJob} from '@/libs/owner/jobs/update-jobs';
 import {Job} from "@/libs/types/job";
+import {supabase} from "@/libs/supabase";
 
 export default function JobDetailScreen() {
     const {id} = useLocalSearchParams();
@@ -56,9 +57,43 @@ export default function JobDetailScreen() {
         try {
             await updateJob(String(id), {status: newStatus});
             if (job) setJob({...job, status: newStatus});
-            Alert.alert("¡Éxito!", `El servicio ha sido actualizado a: ${newStatus.toUpperCase()}`);
-        } catch (error: any) {
-            Alert.alert("Error", error.message || "No se pudo actualizar el estado.");
+
+            const {data: profile} = await supabase
+                .from('profiles')
+                .select('name')
+                .eq('id', job?.worker_id)
+                .single();
+
+            const workerName = profile?.name ?? 'El trabajador';
+            const isStarting = newStatus.toLowerCase() === 'en proceso';
+
+            const {error: notifError} = await supabase.functions.invoke('send-to-admins', {
+                body: {
+                    role: 'owner',
+                    title: isStarting
+                        ? '🛠️ Trabajo iniciado'
+                        : '✅ Trabajo finalizado',
+                    body: isStarting
+                        ? `${workerName} ha comenzado: ${job?.title}`
+                        : `${workerName} ha completado: ${job?.title}`,
+                    data: {
+                        screen: `jobs/${job?.id}`,
+                    },
+                },
+            });
+
+            if (notifError) console.error('Error enviando notificación:', notifError);
+
+            Alert.alert(
+                "¡Éxito!",
+                isStarting
+                    ? "El trabajo ha sido marcado como iniciado."
+                    : "El trabajo ha sido marcado como finalizado."
+            );
+
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : "No se pudo actualizar el estado.";
+            Alert.alert("Error", msg);
         } finally {
             setUpdating(false);
         }

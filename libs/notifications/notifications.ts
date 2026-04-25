@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import {Platform} from 'react-native';
 import {supabase} from '@/libs/supabase';
+import {router} from "expo-router";
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -13,6 +14,10 @@ Notifications.setNotificationHandler({
     }),
 });
 
+Notifications.addNotificationResponseReceivedListener(response => {
+    const screen = response.notification.request.content.data?.screen;
+    if (screen) router.push(`/${screen}` as any);
+});
 export async function registerForPushNotificationsAsync() {
     let token;
 

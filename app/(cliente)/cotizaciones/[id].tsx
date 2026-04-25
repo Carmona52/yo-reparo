@@ -305,7 +305,6 @@ export default function QuoteDetailScreen() {
                 <View style={{height: 40}}/>
             </ScrollView>
 
-            {/* ── Modal zoom imagen ── */}
             <Modal visible={isImageZoomVisible} transparent={true} animationType="fade">
                 <View style={styles.modalOverlay}>
                     <TouchableOpacity style={styles.closeBtn} onPress={() => setImageZoomVisible(false)}>
@@ -431,7 +430,6 @@ const styles = StyleSheet.create({
     priceLabel: {fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1},
     priceValue: {fontSize: 32, fontWeight: '900', color: '#007AFF', marginTop: 5},
 
-    // Apelación
     apelarBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         gap: 8, padding: 16, borderRadius: 14, marginTop: 16,

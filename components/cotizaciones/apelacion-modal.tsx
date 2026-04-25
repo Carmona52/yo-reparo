@@ -23,8 +23,8 @@ interface ApelacionModalProps {
     onClose: () => void;
     cotizacionId: string;
     costoActual: string;
-    apelacionUsada: boolean;           // ya agotó su única apelación
-    apelacionEstado: string | null;    // NULL | 'activa' | 'aceptada' | 'cerrada_sin_acuerdo'
+    apelacionUsada: boolean;
+    apelacionEstado: string | null;
     onPrecioAceptado: (nuevoPrecio: number) => void;
 }
 
@@ -60,7 +60,6 @@ export const ApelacionModal = ({
             const msgs = data ?? [];
             setMensajes(msgs);
 
-            // Última propuesta del admin
             const propuestas = msgs.filter(m => m.precio_propuesto !== null);
             if (propuestas.length > 0)
                 setUltimaPropuesta(propuestas[propuestas.length - 1].precio_propuesto);
@@ -71,7 +70,6 @@ export const ApelacionModal = ({
 
         cargar();
 
-        // Realtime: nuevos mensajes y cambios en la cotización
         const chatChannel = supabase
             .channel(`apelacion-chat-${cotizacionId}`)
             .on('postgres_changes', {
@@ -86,7 +84,6 @@ export const ApelacionModal = ({
             })
             .subscribe();
 
-        // Realtime: si el admin cierra la apelación
         const statusChannel = supabase
             .channel(`apelacion-status-${cotizacionId}`)
             .on('postgres_changes', {
@@ -183,7 +180,6 @@ export const ApelacionModal = ({
             hour: '2-digit', minute: '2-digit', hour12: true,
         });
 
-    // ─── Renders por estado ───────────────────────────────────────────
 
     const renderContenido = () => {
         if (loading) return (
@@ -192,7 +188,6 @@ export const ApelacionModal = ({
             </View>
         );
 
-        // Ya agotó la apelación y fue cerrada sin acuerdo
         if (apelacionUsada && estadoLocal === 'cerrada_sin_acuerdo') {
             return (
                 <View style={styles.estadoContainer}>
@@ -212,7 +207,6 @@ export const ApelacionModal = ({
             );
         }
 
-        // Ya agotó la apelación pero aún no la ha usado (no debería pasar, pero por seguridad)
         if (apelacionUsada && estadoLocal === 'aceptada') {
             return (
                 <View style={styles.estadoContainer}>
@@ -227,7 +221,6 @@ export const ApelacionModal = ({
             );
         }
 
-        // Nunca ha apelado — pantalla de inicio
         if (!apelacionUsada && estadoLocal === null) {
             return (
                 <View style={styles.iniciarContainer}>
@@ -254,14 +247,11 @@ export const ApelacionModal = ({
             );
         }
 
-        // Chat activo
         return (
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={90}
-            >
-                {/* Banner propuesta pendiente */}
+                keyboardVerticalOffset={90}>
                 {ultimaPropuesta && estadoLocal === 'activa' && (
                     <TouchableOpacity style={styles.propuestaBanner} onPress={aceptarPropuesta}>
                         <View style={styles.propuestaInfo}>
@@ -281,8 +271,7 @@ export const ApelacionModal = ({
                     ref={scrollRef}
                     style={styles.mensajes}
                     contentContainerStyle={styles.mensajesContent}
-                    onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
-                >
+                    onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
                     {mensajes.length === 0 ? (
                         <View style={styles.emptyChat}>
                             <Ionicons name="chatbubble-outline" size={36} color="#ccc" />
@@ -295,7 +284,6 @@ export const ApelacionModal = ({
                     )}
                 </ScrollView>
 
-                {/* Input solo si la apelación sigue activa */}
                 {estadoLocal === 'activa' && (
                     <View style={styles.inputRow}>
                         <TextInput
