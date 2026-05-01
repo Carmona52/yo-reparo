@@ -1,30 +1,43 @@
-import {useState, useEffect, useCallback, useMemo} from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     FlatList,
     RefreshControl,
-    StyleSheet,
     View,
     Linking,
     TouchableOpacity,
     TextInput,
     ScrollView,
     useColorScheme,
-    Platform,
     ActivityIndicator
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {Ionicons} from '@expo/vector-icons';
-import {useRouter} from "expo-router";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from "expo-router";
 
-import {CreateContactModal} from "@/components/modals/owner/create-contact";
-import {ThemedView} from "@/components/themed-view";
-import {ThemedText} from "@/components/themed-text";
-import {getAllContacts} from "@/libs/owner/contacts/get-contacts";
-import {Contact} from "@/libs/types/contact";
+import { CreateContactModal } from "@/components/modals/owner/create-contact";
+import { ThemedView } from "@/components/themed-view";
+import { ThemedText } from "@/components/themed-text";
+import { getAllContacts } from "@/libs/owner/contacts/get-contacts";
+import { Contact } from "@/libs/types/contact";
+import { G, COLORS, shadow } from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        cardBg: isDark ? COLORS.cardDark : COLORS.cardLight,
+        surfaceBg: isDark ? COLORS.inputDark : COLORS.inputLight,
+        avatarBg: isDark ? COLORS.primaryBgMedium : COLORS.primaryBgMedium,
+        avatarTextColor: COLORS.primary,
+    };
+};
 
 export default function ContactsScreen() {
     const router = useRouter();
-    const isDark = useColorScheme() === 'dark';
+    const { isDark, textColor, mutedText, cardBg, surfaceBg, avatarBg, avatarTextColor } = useAppTheme();
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -70,37 +83,37 @@ export default function ContactsScreen() {
         if (phone) Linking.openURL(`tel:${phone}`);
     };
 
-    const renderContactItem = ({item}: { item: Contact }) => (
+    const renderContactItem = ({ item }: { item: Contact }) => (
         <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => {
                 router.push({
                     pathname: "/(owner)/contactos/[id]",
-                    params: {id: item.id}
+                    params: { id: item.id }
                 } as any);
             }}
         >
-            <View style={[styles.card, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff'}]}>
-                <View style={styles.cardHeader}>
-                    <View style={styles.avatar}>
-                        <ThemedText style={styles.avatarText}>
+            <View style={[G.card, { backgroundColor: cardBg, borderColor: COLORS.border }, shadow.sm]}>
+                <View style={G.row}>
+                    <View style={[G.iconBadgeSm, { backgroundColor: avatarBg, marginRight: 15 }]}>
+                        <ThemedText style={[G.avatarTextSm, { color: avatarTextColor }]}>
                             {item.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
                         </ThemedText>
                     </View>
-                    <View style={styles.infoContainer}>
-                        <ThemedText type="defaultSemiBold" style={styles.nameText}>
+                    <View style={G.flex1}>
+                        <ThemedText type="defaultSemiBold" style={[G.infoValue, { color: textColor, marginBottom: 2 }]}>
                             {item.name}
                         </ThemedText>
-                        <ThemedText style={styles.addressText} numberOfLines={1}>
-                            <Ionicons name="location" size={10} color="#0a7ea4"/> {item.neighborhood || 'Sin colonia'}
+                        <ThemedText style={[G.infoValueSm, { color: mutedText }]} numberOfLines={1}>
+                            <Ionicons name="location" size={10} color={COLORS.primary} /> {item.neighborhood || 'Sin colonia'}
                         </ThemedText>
                     </View>
                     <TouchableOpacity
-                        style={styles.callButton}
+                        style={[G.iconBadgeSm, { backgroundColor: COLORS.success, ...shadow.success }]}
                         onPress={() => makeCall(item.phone)}
                         activeOpacity={0.6}
                     >
-                        <Ionicons name="call" size={18} color="#fff"/>
+                        <Ionicons name="call" size={18} color={COLORS.onPrimary} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -108,44 +121,49 @@ export default function ContactsScreen() {
     );
 
     return (
-        <ThemedView style={{flex: 1}}>
-            <SafeAreaView style={{flex: 1}} edges={['top']}>
-                {/* Header Section */}
-                <View style={styles.header}>
-                    <ThemedText type="title" style={styles.headerTitle}>Clientes</ThemedText>
+        <ThemedView style={G.flex1}>
+            <SafeAreaView style={G.flex1} edges={['top']}>
+                <View style={G.pageHeader}>
+                    <ThemedText type="title" style={[G.pageTitle, { color: textColor }]}>Clientes</ThemedText>
 
-                    <View style={[styles.searchContainer, {backgroundColor: isDark ? '#1c1c1e' : '#f0f2f5'}]}>
-                        <Ionicons name="search" size={18} color="#8e8e93"/>
+                    <View style={[G.searchContainer, { backgroundColor: surfaceBg, borderColor: COLORS.border }]}>
+                        <Ionicons name="search" size={18} color={mutedText} />
                         <TextInput
                             placeholder="Buscar por nombre..."
-                            placeholderTextColor="#8e8e93"
-                            style={[styles.searchInput, {color: isDark ? '#fff' : '#000'}]}
+                            placeholderTextColor={mutedText}
+                            style={[G.searchInput, { color: textColor }]}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
                         {searchQuery.length > 0 && (
                             <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={18} color="#8e8e93"/>
+                                <Ionicons name="close-circle" size={18} color={mutedText} />
                             </TouchableOpacity>
                         )}
                     </View>
                 </View>
 
-                {/* Filtros de Colonias */}
-                <View style={styles.filterWrapper}>
+                <View style={G.filterWrapper}>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.filterContainer}
+                        contentContainerStyle={G.filterContainer}
                     >
                         {neighborhoods.map(nb => (
                             <TouchableOpacity
                                 key={nb}
                                 onPress={() => setSelectedNeighborhood(nb)}
-                                style={[styles.filterChip, selectedNeighborhood === nb && styles.activeChip]}
+                                style={[
+                                    G.filterChip,
+                                    selectedNeighborhood === nb && G.filterChipActive
+                                ]}
                             >
                                 <ThemedText
-                                    style={[styles.filterText, selectedNeighborhood === nb && styles.activeFilterText]}>
+                                    style={[
+                                        G.filterText,
+                                        selectedNeighborhood === nb && G.filterTextActive
+                                    ]}
+                                >
                                     {nb}
                                 </ThemedText>
                             </TouchableOpacity>
@@ -157,30 +175,33 @@ export default function ContactsScreen() {
                     data={filteredContacts}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderContactItem}
-                    contentContainerStyle={styles.listContent}
+                    contentContainerStyle={[G.pageContent, { paddingBottom: 100 }]}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4"/>
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
                     }
                     ListEmptyComponent={
                         !loading ? (
-                            <View style={styles.emptyContainer}>
-                                <Ionicons name="people-outline" size={60} color={isDark ? "#333" : "#ccc"}/>
-                                <ThemedText style={styles.emptyText}>No se encontraron clientes en esta
-                                    zona.</ThemedText>
+                            <View style={G.emptyContainer}>
+                                <View style={[G.emptyIconCircle, { backgroundColor: COLORS.primaryLight }]}>
+                                    <Ionicons name="people-outline" size={40} color={COLORS.primary} />
+                                </View>
+                                <ThemedText style={[G.emptyText, { color: mutedText }]}>
+                                    No se encontraron clientes en esta zona.
+                                </ThemedText>
                             </View>
                         ) : (
-                            <ActivityIndicator size="small" color="#0a7ea4" style={{marginTop: 20}}/>
+                            <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: 20 }} />
                         )
                     }
                 />
 
                 <TouchableOpacity
-                    style={styles.fab}
+                    style={[G.fab, shadow.primaryLg]}
                     onPress={() => setModalVisible(true)}
                     activeOpacity={0.8}
                 >
-                    <Ionicons name="person-add" size={26} color="#fff"/>
+                    <Ionicons name="person-add" size={26} color={COLORS.onPrimary} />
                 </TouchableOpacity>
 
                 <CreateContactModal
@@ -192,88 +213,3 @@ export default function ContactsScreen() {
         </ThemedView>
     );
 }
-
-const styles = StyleSheet.create({
-    header: {paddingHorizontal: 20, paddingTop: 10},
-    headerTitle: {fontSize: 28, marginBottom: 15},
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        height: 46,
-        borderRadius: 12,
-        marginBottom: 10,
-        gap: 10
-    },
-    searchInput: {flex: 1, fontSize: 15},
-
-    filterWrapper: {paddingVertical: 10},
-    filterContainer: {paddingHorizontal: 20, gap: 8},
-    filterChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 10,
-        backgroundColor: 'rgba(150, 150, 150, 0.1)',
-    },
-    activeChip: {backgroundColor: '#0a7ea4'},
-    filterText: {fontSize: 13, opacity: 0.6, fontWeight: '600'},
-    activeFilterText: {color: '#fff', opacity: 1},
-
-    listContent: {padding: 20, paddingBottom: 100},
-    card: {
-        padding: 15,
-        borderRadius: 20,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(150, 150, 150, 0.1)',
-        ...Platform.select({
-            ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.05, shadowRadius: 8},
-            android: {elevation: 2}
-        })
-    },
-    cardHeader: {flexDirection: 'row', alignItems: 'center'},
-    avatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
-        backgroundColor: 'rgba(10, 126, 164, 0.15)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15
-    },
-    avatarText: {color: '#0a7ea4', fontWeight: 'bold', fontSize: 16},
-    infoContainer: {flex: 1},
-    nameText: {fontSize: 17, marginBottom: 2},
-    addressText: {fontSize: 13, opacity: 0.5},
-    callButton: {
-        width: 42,
-        height: 42,
-        borderRadius: 14,
-        backgroundColor: '#10b981',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#10b981',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-    },
-    emptyContainer: {alignItems: 'center', marginTop: 80, opacity: 0.8},
-    emptyText: {textAlign: 'center', marginTop: 15, opacity: 0.5, fontSize: 14},
-
-    fab: {
-        position: 'absolute',
-        bottom: 30,
-        right: 25,
-        width: 60,
-        height: 60,
-        borderRadius: 18,
-        backgroundColor: '#0a7ea4',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#0a7ea4',
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 5,
-    }
-});

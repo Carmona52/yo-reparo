@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useCallback} from "react";
-import {StyleSheet, View, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, Alert} from "react-native";
+import {View, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, Alert, useColorScheme} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {Ionicons} from '@expo/vector-icons';
 import {useRouter} from "expo-router";
@@ -8,9 +8,24 @@ import {Cotizacion} from "@/libs/types/cotizaciones";
 import {cotizacionesService} from "@/libs/users/get-cotizacioes";
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
+import {G, COLORS} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        cardBg: isDark ? COLORS.cardDark : COLORS.cardLight,
+        surfaceBg: isDark ? COLORS.surfaceMedium : COLORS.surfaceLight,
+        borderColor: COLORS.border,
+    };
+};
 
 export default function OwnerCotizacionesScreen() {
     const router = useRouter();
+    const {isDark, textColor, mutedText, cardBg, borderColor} = useAppTheme();
     const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -32,70 +47,81 @@ export default function OwnerCotizacionesScreen() {
         loadData();
     }, [loadData]);
 
+    console.log(cotizaciones)
+
     const getStatusStyle = (status: string) => {
         const s = status?.toLowerCase() || '';
         if (s === 'pendiente') return {color: '#FFCC00', bg: '#FFF9E6'};
         if (s === 'enviada') return {color: '#007AFF', bg: '#E6F4FE'};
         if (s === 'aceptada') return {color: '#4CD964', bg: '#EAFBEA'};
-        return {color: '#8e8e93', bg: '#f2f2f2'};
+        return {color: mutedText, bg: COLORS.surfaceStrong};
     };
 
     const renderItem = ({item}: { item: Cotizacion }) => {
         const style = getStatusStyle(item.estado);
         return (
             <TouchableOpacity
-                style={styles.card}
+                style={[G.card, {backgroundColor: cardBg, borderColor: borderColor, marginBottom: 16}]}
                 onPress={() => router.push({
-                    pathname:"/(owner)/cotizaciones/[id]" as any,
+                    pathname: "/(owner)/cotizaciones/[id]" as any,
                     params: {id: item.id},
                 })}>
-                <View style={styles.cardHeader}>
-                    <View style={[styles.badge, {backgroundColor: style.bg}]}>
-                        <ThemedText style={[styles.badgeText, {color: style.color}]}>
+                <View style={[G.rowBetween, {marginBottom: 10}]}>
+                    <View style={[G.badge, {backgroundColor: style.bg}]}>
+                        <ThemedText style={[G.badgeText, {color: style.color}]}>
                             {item.estado.toUpperCase()}
                         </ThemedText>
                     </View>
-                    <ThemedText style={styles.dateText}>
+                    <ThemedText style={{fontSize: 12, color: mutedText}}>
                         {new Date(item.created_at).toLocaleDateString()}
                     </ThemedText>
                 </View>
 
-                <ThemedText type="defaultSemiBold" style={styles.title}>{item.servicio}</ThemedText>
+                <ThemedText type="defaultSemiBold"
+                            style={[G.infoValue, {fontSize: 17, marginBottom: 5, color: textColor}]}>
+                    {item.servicio}
+                </ThemedText>
 
-                <View style={styles.locationRow}>
-                    <Ionicons name="location-outline" size={14} color="#666"/>
-                    <ThemedText style={styles.locationText} numberOfLines={1}>
+                <View style={[G.row, {gap: 5, marginBottom: 12}]}>
+                    <Ionicons name="person-sharp" size={14} color={mutedText}/>
+                    <ThemedText style={[G.infoValueSm, {flex: 1, color: mutedText}]} numberOfLines={1}>
+                        {item.profiles?.name}
+                    </ThemedText>
+                </View>
+                <View style={[G.row, {gap: 5, marginBottom: 12}]}>
+                    <Ionicons name="location-outline" size={14} color={mutedText}/>
+                    <ThemedText style={[G.infoValueSm, {flex: 1, color: mutedText}]} numberOfLines={1}>
                         {item.direccion}
                     </ThemedText>
                 </View>
 
-                <View style={styles.footer}>
-                    <ThemedText style={styles.clientName}>Cliente ID: {item.created_by?.name}...</ThemedText>
-                    <Ionicons name="chevron-forward" size={18} color="#007AFF"/>
-                </View>
             </TouchableOpacity>
         );
     };
 
     return (
-        <ThemedView style={{flex: 1}}>
-            <SafeAreaView style={{flex: 1}} edges={['top']}>
-                <View style={styles.header}>
-                    <ThemedText type="title">Cotizaciones Recibidas</ThemedText>
+        <ThemedView style={G.flex1}>
+            <SafeAreaView style={G.flex1} edges={['top']}>
+                <View style={G.pageHeader}>
+                    <ThemedText type="title" style={{color: textColor}}>Cotizaciones Recibidas</ThemedText>
                 </View>
 
                 {loading && !refreshing ? (
-                    <View style={styles.center}><ActivityIndicator size="large" color="#007AFF"/></View>
+                    <View style={G.center}>
+                        <ActivityIndicator size="large" color={COLORS.primary}/>
+                    </View>
                 ) : (
                     <FlatList
                         data={cotizaciones}
                         keyExtractor={(item) => item.id}
                         renderItem={renderItem}
-                        contentContainerStyle={styles.list}
-                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)}/>}
+                        contentContainerStyle={G.pageContent}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)}
+                                                        tintColor={COLORS.primary}/>}
                         ListEmptyComponent={
-                            <View style={styles.center}>
-                                <ThemedText style={{opacity: 0.5}}>No hay solicitudes pendientes.</ThemedText>
+                            <View style={[G.center, {marginTop: 50}]}>
+                                <ThemedText style={{color: mutedText, opacity: 0.5}}>No hay solicitudes
+                                    pendientes.</ThemedText>
                             </View>
                         }
                     />
@@ -104,34 +130,3 @@ export default function OwnerCotizacionesScreen() {
         </ThemedView>
     );
 }
-
-const styles = StyleSheet.create({
-    header: {padding: 20},
-    subtitle: {opacity: 0.5, fontSize: 14},
-    list: {padding: 20},
-    card: {
-        backgroundColor: 'rgba(150,150,150,0.05)',
-        borderRadius: 20,
-        padding: 16,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(150,150,150,0.1)',
-    },
-    cardHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10},
-    badge: {paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8},
-    badgeText: {fontSize: 10, fontWeight: '800'},
-    dateText: {fontSize: 12, opacity: 0.5},
-    title: {fontSize: 17, marginBottom: 5},
-    locationRow: {flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 12},
-    locationText: {fontSize: 13, opacity: 0.6, flex: 1},
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(150,150,150,0.1)'
-    },
-    clientName: {fontSize: 12, opacity: 0.5},
-    center: {flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50}
-});

@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {StyleSheet, View, ActivityIndicator, TouchableOpacity, Alert} from 'react-native';
+import {View, ActivityIndicator, TouchableOpacity, Alert, useColorScheme} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 import {ThemedView} from "@/components/themed-view";
@@ -7,10 +7,24 @@ import {ThemedText} from "@/components/themed-text";
 import {getToolByID} from "@/libs/workers/tools";
 import {supabase} from "@/libs/supabase";
 import {Tools} from "@/libs/types/tools";
+import {G, COLORS} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        surfaceBg: isDark ? COLORS.surfaceMedium : COLORS.surfaceLight,
+        borderColor: COLORS.border,
+    };
+};
 
 export default function ToolDetailAdminScreen() {
     const {id} = useLocalSearchParams();
     const router = useRouter();
+    const {textColor, mutedText, surfaceBg} = useAppTheme();
     const [tool, setTool] = useState<Tools | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -39,10 +53,10 @@ export default function ToolDetailAdminScreen() {
                     text: "Confirmar",
                     style: "default",
                     onPress: async () => {
-                        const { error } = await supabase
+                        const {error} = await supabase
                             .from('herramientas')
-                            .update({ estado: 'Entregada' })
-                            .eq('id', id); 
+                            .update({estado: 'Entregada'})
+                            .eq('id', id);
                         if (!error) {
                             Alert.alert("Éxito", "Herramienta liberada");
                             router.back();
@@ -53,68 +67,60 @@ export default function ToolDetailAdminScreen() {
         );
     };
 
-    if (loading) return <ThemedView style={styles.center}><ActivityIndicator color="#0a7ea4"/></ThemedView>;
+    if (loading) return <ThemedView style={G.center}><ActivityIndicator color={COLORS.primary}/></ThemedView>;
 
     return (
-        <ThemedView style={styles.container}>
-
-            <View style={styles.header}>
-                <View style={styles.iconCircle}>
-                    <Ionicons name="construct" size={40} color="#0a7ea4"/>
+        <ThemedView style={[G.flex1, {padding: 25, paddingTop: 60}]}>
+            <View style={[G.center, {marginBottom: 40}]}>
+                <View style={[
+                    G.center,
+                    {
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        backgroundColor: COLORS.primaryBg,
+                        marginBottom: 15
+                    }
+                ]}>
+                    <Ionicons name="construct" size={40} color={COLORS.primary}/>
                 </View>
-                <ThemedText type="title">{tool?.tool}</ThemedText>
-                <ThemedText style={styles.dateText}>
+                <ThemedText type="title" style={{color: textColor}}>{tool?.tool}</ThemedText>
+                <ThemedText style={[G.infoValueSm, {color: mutedText, marginTop: 5}]}>
                     Prestada el: {new Date(tool?.created_at!).toLocaleDateString()}
                 </ThemedText>
             </View>
 
-            <View style={styles.actions}>
-                <ThemedText style={styles.sectionLabel}>Acciones de Administrador</ThemedText>
+            <View style={{gap: 15}}>
+                <ThemedText style={[G.sectionLabel, {marginBottom: 5}]}>Acciones de Administrador</ThemedText>
 
-                <TouchableOpacity style={styles.actionBtn} onPress={handleReturn}>
-                    <View style={[styles.btnIcon, {backgroundColor: '#10b981'}]}>
-                        <Ionicons name="checkmark-circle-outline" size={24} color="#fff"/>
+                <TouchableOpacity style={[G.row, {backgroundColor: surfaceBg, padding: 15, borderRadius: 15}]}
+                                  onPress={handleReturn}>
+                    <View style={[G.center, {
+                        width: 45,
+                        height: 45,
+                        borderRadius: 12,
+                        backgroundColor: COLORS.success,
+                        marginRight: 15
+                    }]}>
+                        <Ionicons name="checkmark-circle-outline" size={24} color={COLORS.onPrimary}/>
                     </View>
-                    <ThemedText style={styles.btnText}>Marcar como Entregada</ThemedText>
+                    <ThemedText style={[G.infoValue, {color: textColor}]}>Marcar como Entregada</ThemedText>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.actionBtn}
+                <TouchableOpacity style={[G.row, {backgroundColor: surfaceBg, padding: 15, borderRadius: 15}]}
                                   onPress={() => Alert.alert("Reporte", "Abriendo formulario de reporte...")}>
-                    <View style={[styles.btnIcon, {backgroundColor: '#ff4444'}]}>
-                        <Ionicons name="alert-circle-outline" size={24} color="#fff"/>
+                    <View style={[G.center, {
+                        width: 45,
+                        height: 45,
+                        borderRadius: 12,
+                        backgroundColor: COLORS.danger,
+                        marginRight: 15
+                    }]}>
+                        <Ionicons name="alert-circle-outline" size={24} color={COLORS.onPrimary}/>
                     </View>
-                    <ThemedText style={styles.btnText}>Reportar Daño o Pérdida</ThemedText>
+                    <ThemedText style={[G.infoValue, {color: textColor}]}>Reportar Daño o Pérdida</ThemedText>
                 </TouchableOpacity>
             </View>
         </ThemedView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {flex: 1, padding: 25, paddingTop: 60},
-    center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
-    backBtn: {flexDirection: 'row', alignItems: 'center', marginBottom: 30},
-    backText: {color: '#0a7ea4', marginLeft: 5, fontWeight: 'bold'},
-    header: {alignItems: 'center', marginBottom: 40},
-    iconCircle: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: 'rgba(10, 126, 164, 0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 15
-    },
-    dateText: {opacity: 0.5, marginTop: 5},
-    actions: {gap: 15},
-    sectionLabel: {fontSize: 12, fontWeight: 'bold', opacity: 0.4, textTransform: 'uppercase', marginBottom: 5},
-    actionBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(150,150,150,0.08)',
-        padding: 15,
-        borderRadius: 15
-    },
-    btnIcon: {width: 45, height: 45, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15},
-    btnText: {fontSize: 16, fontWeight: '600'}
-});

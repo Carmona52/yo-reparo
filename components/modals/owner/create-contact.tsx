@@ -26,7 +26,6 @@ export function CreateContactModal({visible, onClose, onSuccess}: Props) {
     const isDark = useColorScheme() === 'dark';
     const [loading, setLoading] = useState(false);
 
-    // Estado inicial del formulario basado en tu esquema de DB
     const [form, setForm] = useState<CreateContact>({
         name: '',
         phone: '',

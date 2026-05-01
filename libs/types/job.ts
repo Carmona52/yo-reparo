@@ -11,6 +11,9 @@ export interface Job {
     created_at: string;
     fecha_cita: string;
     image_url?:string;
+    profiles?:{
+        name: string;
+    }
 }
 
 export interface createJob {

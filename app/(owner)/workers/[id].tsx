@@ -1,5 +1,5 @@
 import {useState, useEffect} from 'react';
-import {View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking, Platform} from 'react-native';
+import {View, ScrollView, TouchableOpacity, ActivityIndicator, Linking, useColorScheme} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,10 +11,25 @@ import {getToolsByWorkerId} from "@/libs/workers/tools";
 import {Tools} from "@/libs/types/tools";
 import AddToolModal from "@/components/modals/owner/create-tool";
 import EditWorkerModal from "@/components/modals/owner/edit-worker";
+import {G, COLORS, shadow} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        cardBg: isDark ? COLORS.cardDark : COLORS.cardLight,
+        surfaceBg: isDark ? COLORS.surfaceMedium : COLORS.surfaceLight,
+        borderColor: COLORS.border,
+    };
+};
 
 export default function WorkerDetailScreen() {
     const {id} = useLocalSearchParams();
     const router = useRouter();
+    const {isDark, textColor, mutedText, cardBg, surfaceBg, borderColor} = useAppTheme();
 
     const [modalVisible, setModalVisible] = useState(false);
     const [worker, setWorker] = useState<Worker | null>(null);
@@ -22,7 +37,6 @@ export default function WorkerDetailScreen() {
     const [tools, setTools] = useState<Tools[]>([]);
     const [loadingTools, setLoadingTools] = useState(true);
     const [editModalVisible, setEditModalVisible] = useState(false);
-
 
     const loadWorker = async () => {
         try {
@@ -65,155 +79,160 @@ export default function WorkerDetailScreen() {
         loadWorkerTools();
     }, [id]);
 
-
     if (loading) return (
-        <ThemedView style={styles.center}>
-            <ActivityIndicator size="large" color="#0a7ea4"/>
+        <ThemedView style={G.center}>
+            <ActivityIndicator size="large" color={COLORS.primary}/>
         </ThemedView>
     );
 
     if (!worker) return (
-        <ThemedView style={styles.center}>
+        <ThemedView style={G.center}>
             <ThemedText>Trabajador no encontrado</ThemedText>
-            <TouchableOpacity onPress={() => router.push('/(owner)/workers')} style={styles.errorBtn}>
-                <ThemedText style={{color: '#fff'}}>Regresar</ThemedText>
+            <TouchableOpacity onPress={() => router.push('/(owner)/workers')} style={[G.btnPrimary, {marginTop: 20}]}>
+                <ThemedText style={G.btnText}>Regresar</ThemedText>
             </TouchableOpacity>
         </ThemedView>
     );
 
-    return (
-        <ThemedView style={{flex: 1}}>
-            <View style={styles.topBar}>
-                <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()}>
-                    <Ionicons name="chevron-back" size={24} color="#333"/>
-                </TouchableOpacity>
-                <ThemedText type="defaultSemiBold">Ficha del Personal</ThemedText>
+    function returnRolEsp(rol: string) {
+        switch (rol) {
+            case 'worker':
+                return "Trabajador"
+                break;
+        }
+    }
 
+    return (
+        <ThemedView style={G.flex1}>
+            <View style={[G.topBar, {justifyContent: 'space-between', paddingTop: 60}]}>
+                <TouchableOpacity style={G.backBtn} onPress={() => router.back()}>
+                    <Ionicons name="chevron-back" size={24} color={textColor}/>
+                </TouchableOpacity>
+                <ThemedText type="defaultSemiBold" style={{color: textColor}}>Ficha del Personal</ThemedText>
+                <View style={{width: 40}}/>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-                <View style={styles.profileHeader}>
-                    <View style={styles.bigAvatar}>
-                        <ThemedText style={styles.avatarLetter}>
+            <ScrollView contentContainerStyle={G.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={G.profileHeader}>
+                    <View style={[G.avatarPrimary, shadow.primaryLg]}>
+                        <ThemedText style={G.avatarTextLg}>
                             {worker.name.charAt(0).toUpperCase()}
                         </ThemedText>
                     </View>
-                    <ThemedText type="title" style={styles.name}>{worker.name}</ThemedText>
-                    <View style={styles.roleBadge}>
-                        <ThemedText style={styles.roleText}>{worker.role || 'Operativo'}</ThemedText>
+                    <ThemedText type="title" style={[G.profileName, {color: textColor}]}>
+                        {worker.name}
+                    </ThemedText>
+                    <View style={G.roleBadge}>
+                        <ThemedText style={G.roleBadgeText}>{returnRolEsp(worker.role)}</ThemedText>
                     </View>
                 </View>
 
-                <View style={styles.quickActions}>
+                <View style={G.quickActions}>
                     <TouchableOpacity
-                        style={[styles.actionBtn, {backgroundColor: '#10b981'}]}
+                        style={[G.actionBtnLg, {backgroundColor: COLORS.success}]}
                         onPress={() => Linking.openURL(`tel:${worker.phone}`)}>
-                        <Ionicons name="call" size={24} color="#fff"/>
-                        <ThemedText style={styles.actionBtnText}>Llamar</ThemedText>
+                        <Ionicons name="call" size={24} color={COLORS.onPrimary}/>
+                        <ThemedText style={G.actionBtnText}>Llamar</ThemedText>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.actionBtn, {backgroundColor: '#25d366'}]}
+                        style={[G.actionBtnLg, {backgroundColor: COLORS.whatsapp}]}
                         onPress={() => Linking.openURL(`whatsapp://send?phone=${worker.phone}`)}>
-                        <Ionicons name="logo-whatsapp" size={24} color="#fff"/>
-                        <ThemedText style={styles.actionBtnText}>WhatsApp</ThemedText>
+                        <Ionicons name="logo-whatsapp" size={24} color={COLORS.onPrimary}/>
+                        <ThemedText style={G.actionBtnText}>WhatsApp</ThemedText>
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.infoCard}>
-                    <ThemedText style={styles.cardLabel}>Información de Contacto</ThemedText>
+                <View style={[G.cardSurface, {marginBottom: 20}]}>
+                    <ThemedText style={G.cardLabel}>Información de Contacto</ThemedText>
 
-                    <View style={styles.infoRow}>
-                        <Ionicons name="phone-portrait-outline" size={20} color="#0a7ea4"/>
-                        <View style={styles.infoTextGroup}>
-                            <ThemedText style={styles.dataLabel}>Teléfono</ThemedText>
-                            <ThemedText style={styles.dataValue}>{worker.phone || 'No registrado'}</ThemedText>
+                    <View style={G.infoRow}>
+                        <Ionicons name="phone-portrait-outline" size={20} color={COLORS.primary}/>
+                        <View style={G.infoTextGroup}>
+                            <ThemedText style={G.infoLabel}>Teléfono</ThemedText>
+                            <ThemedText style={[G.infoValue, {color: textColor}]}>
+                                {worker.phone || 'No registrado'}
+                            </ThemedText>
                         </View>
                     </View>
 
-                    <View style={styles.infoRow}>
-                        <Ionicons name="mail-outline" size={20} color="#0a7ea4"/>
-                        <View style={styles.infoTextGroup}>
-                            <ThemedText style={styles.dataLabel}>Correo Electrónico</ThemedText>
-                            <ThemedText style={styles.dataValue}>{worker.email || 'Sin correo'}</ThemedText>
+                    <View style={[G.infoRow, {borderBottomWidth: 0}]}>
+                        <Ionicons name="mail-outline" size={20} color={COLORS.primary}/>
+                        <View style={G.infoTextGroup}>
+                            <ThemedText style={G.infoLabel}>Correo Electrónico</ThemedText>
+                            <ThemedText style={[G.infoValue, {color: textColor}]}>
+                                {worker.email || 'Sin correo'}
+                            </ThemedText>
                         </View>
                     </View>
                 </View>
 
-                <View style={styles.infoCard}>
-                    <View style={styles.cardHeaderRow}>
-                        <ThemedText style={styles.cardLabel}>Herramientas Prestadas</ThemedText>
-                        <Ionicons name="hammer-outline" size={16} color="#0a7ea4"/>
+                <View style={[G.cardSurface, {marginBottom: 20}]}>
+                    <View style={[G.rowBetween, {marginBottom: 15}]}>
+                        <ThemedText style={G.cardLabel}>Herramientas Prestadas</ThemedText>
+                        <Ionicons name="hammer-outline" size={16} color={COLORS.primary}/>
                     </View>
 
                     {loadingTools ? (
-                        <ActivityIndicator size="small" color="#0a7ea4"/>
+                        <ActivityIndicator size="small" color={COLORS.primary}/>
                     ) : tools.length > 0 ? (
                         tools.map((item) => (
                             <TouchableOpacity
                                 key={item.id}
-                                style={styles.toolItemRow}
+                                style={G.toolItemRow}
                                 onPress={() => router.push({
                                     pathname: "/(owner)/workers/herramientas/[id]",
                                     params: {id: item.id, workerId: worker.id}
                                 })}
                             >
-                                <View style={styles.toolDot}/>
-                                <View style={{flex: 1}}>
-                                    <ThemedText style={styles.toolNameText}>{item.tool}</ThemedText>
-                                    <ThemedText style={styles.toolDateText}>
+                                <View style={[G.toolDot, {backgroundColor: COLORS.primary}]}/>
+                                <View style={G.flex1}>
+                                    <ThemedText style={[G.toolName, {color: textColor}]}>{item.tool}</ThemedText>
+                                    <ThemedText style={[G.toolDate, {color: mutedText}]}>
                                         Prestada el día: {new Date(item.created_at).toLocaleDateString()}
                                     </ThemedText>
                                 </View>
-                                <Ionicons name="chevron-forward" size={18} color="rgba(150,150,150,0.5)"/>
+                                <Ionicons name="chevron-forward" size={18} color={COLORS.mutedIcon}/>
                             </TouchableOpacity>
                         ))
                     ) : (
-                        <ThemedText style={styles.emptyText}>Sin herramientas a cargo</ThemedText>
+                        <ThemedText style={[G.emptyText, {color: mutedText}]}>Sin herramientas a cargo</ThemedText>
                     )}
-
                 </View>
 
-                <ThemedView>
-                    <TouchableOpacity
-                        style={styles.assignBtn}
-                        onPress={() => setModalVisible(true)}>
-                        <Ionicons name="add" size={20} color="#0a7ea4"/>
-                        <ThemedText style={{color: '#0a7ea4', fontWeight: 'bold'}}>Prestar más herramientas</ThemedText>
-                    </TouchableOpacity>
-                </ThemedView>
-                <View style={styles.infoCard}>
-                    <ThemedText style={styles.cardLabel}>Rendimiento y Status</ThemedText>
+                <TouchableOpacity
+                    style={[G.btnOutlinePrimary, {marginBottom: 20, borderStyle: 'solid'}]}
+                    onPress={() => setModalVisible(true)}>
+                    <Ionicons name="add" size={20} color={COLORS.primary}/>
+                    <ThemedText style={{color: COLORS.primary, fontWeight: 'bold'}}>Prestar más
+                        herramientas</ThemedText>
+                </TouchableOpacity>
 
-                    <View style={styles.statsGrid}>
-                        <View style={styles.statBox}>
-                            <ThemedText style={styles.statNumber}>12</ThemedText>
-                            <ThemedText style={styles.statLabel}>Trabajos</ThemedText>
+                <View style={[G.cardSurface, {marginBottom: 20}]}>
+                    <ThemedText style={G.cardLabel}>Rendimiento y Status</ThemedText>
+                    <View style={G.statsGrid}>
+                        <View style={G.statBox}>
+                            <ThemedText style={[G.statNumber, {color: COLORS.primary}]}>12</ThemedText>
+                            <ThemedText style={G.statLabel}>Trabajos</ThemedText>
                         </View>
-                        <View style={styles.statBox}>
-                            <ThemedText style={styles.statNumber}>4.8</ThemedText>
-                            <ThemedText style={styles.statLabel}>Rating</ThemedText>
+                        <View style={G.statBox}>
+                            <ThemedText style={[G.statNumber, {color: COLORS.primary}]}>4.8</ThemedText>
+                            <ThemedText style={G.statLabel}>Rating</ThemedText>
                         </View>
-                        <View style={styles.statBox}>
-                            <ThemedText style={styles.statNumber}>Activo</ThemedText>
-                            <ThemedText style={styles.statLabel}>Estado</ThemedText>
+                        <View style={G.statBox}>
+                            <ThemedText style={[G.statNumber, {color: COLORS.primary}]}>Activo</ThemedText>
+                            <ThemedText style={G.statLabel}>Estado</ThemedText>
                         </View>
                     </View>
                 </View>
-
-                {/*<TouchableOpacity style={styles.deleteBtn}>*/}
-                {/*    <ThemedText style={{color: '#ff4444', fontWeight: 'bold'}}>Eliminar del equipo</ThemedText>*/}
-                {/*</TouchableOpacity>*/}
-
-
             </ScrollView>
 
             <AddToolModal
                 visible={modalVisible}
                 onClose={() => setModalVisible(false)}
                 workerId={String(id)}
-                onSuccess={refreshTools}/>
+                onSuccess={refreshTools}
+            />
             {worker && (
                 <EditWorkerModal
                     visible={editModalVisible}
@@ -225,122 +244,3 @@ export default function WorkerDetailScreen() {
         </ThemedView>
     );
 }
-
-const styles = StyleSheet.create({
-    center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
-    topBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: Platform.OS === 'ios' ? 60 : 40,
-        paddingBottom: 10
-    },
-    iconBtn: {
-        width: 40, height: 40, borderRadius: 20,
-        backgroundColor: 'rgba(150,150,150,0.1)',
-        justifyContent: 'center', alignItems: 'center'
-    },
-    scroll: {padding: 20},
-
-    profileHeader: {alignItems: 'center', marginBottom: 30},
-    bigAvatar: {
-        width: 100, height: 100, borderRadius: 30,
-        backgroundColor: '#0a7ea4', justifyContent: 'center', alignItems: 'center',
-        marginBottom: 15,
-        elevation: 10, shadowColor: '#0a7ea4', shadowOpacity: 0.3, shadowRadius: 15
-    },
-    avatarLetter: {color: '#fff', fontSize: 40, fontWeight: 'bold'},
-    name: {fontSize: 26, fontWeight: '800', textAlign: 'center'},
-    roleBadge: {
-        backgroundColor: 'rgba(10, 126, 164, 0.1)',
-        paddingHorizontal: 15, paddingVertical: 5,
-        borderRadius: 10, marginTop: 10
-    },
-    roleText: {color: '#0a7ea4', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 12},
-
-    quickActions: {flexDirection: 'row', gap: 15, marginBottom: 30},
-    actionBtn: {
-        flex: 1, height: 55, borderRadius: 18,
-        flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8
-    },
-    actionBtnText: {color: '#fff', fontWeight: 'bold', fontSize: 16},
-
-    infoCard: {
-        backgroundColor: 'rgba(150,150,150,0.08)',
-        borderRadius: 24, padding: 20, marginBottom: 20
-    },
-    cardLabel: {
-        fontSize: 13,
-        opacity: 0.4,
-        fontWeight: 'bold',
-        textTransform: 'uppercase',
-        marginBottom: 20,
-        letterSpacing: 1
-    },
-    infoRow: {flexDirection: 'row', alignItems: 'center', marginBottom: 18},
-    infoTextGroup: {marginLeft: 15},
-    dataLabel: {fontSize: 11, opacity: 0.5, textTransform: 'uppercase'},
-    dataValue: {fontSize: 16, fontWeight: '500'},
-
-    statsGrid: {flexDirection: 'row', justifyContent: 'space-between'},
-    statBox: {alignItems: 'center', flex: 1},
-    statNumber: {fontSize: 18, fontWeight: 'bold', color: '#0a7ea4'},
-    statLabel: {fontSize: 12, opacity: 0.5},
-
-    errorBtn: {backgroundColor: '#0a7ea4', padding: 12, borderRadius: 10, marginTop: 20},
-    deleteBtn: {
-        marginTop: 10, marginBottom: 40,
-        padding: 20, borderRadius: 20,
-        alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255, 68, 68, 0.2)'
-    },
-    cardHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    toolItemRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(150,150,150,0.05)',
-    },
-    toolDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#0a7ea4',
-        marginRight: 12,
-    },
-    toolNameText: {
-        fontSize: 15,
-        fontWeight: '500',
-    },
-    emptyText: {
-        fontSize: 14,
-        opacity: 0.4,
-        fontStyle: 'italic',
-        textAlign: 'center',
-        paddingVertical: 10,
-    },
-    toolDateText: {
-        fontSize: 12,
-        color: '#666',
-        marginTop: 2,
-    },
-    assignBtn: {
-        marginTop: 10,
-        marginBottom: 40,
-        padding: 20,
-        borderRadius: 20,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(10, 126, 164, 0.3)',
-        borderStyle: 'dashed',
-        gap: 8
-    },
-});

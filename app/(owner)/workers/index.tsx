@@ -2,13 +2,11 @@ import {useState, useEffect, useCallback, useMemo} from 'react';
 import {
     FlatList,
     RefreshControl,
-    StyleSheet,
     View,
     Linking,
     TouchableOpacity,
     TextInput,
     useColorScheme,
-    Platform,
     ActivityIndicator
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -19,10 +17,27 @@ import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {getAllWorkers} from "@/libs/owner/workers/get-workers";
 import {Worker} from '@/libs/types/worker';
+import {G, COLORS, shadow} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        cardBg: isDark ? COLORS.cardDark : COLORS.cardLight,
+        surfaceBg: isDark ? COLORS.surfaceMedium : COLORS.surfaceLight,
+        inputBg: isDark ? COLORS.inputDark : COLORS.inputLight,
+        borderColor: COLORS.border,
+        avatarBg: isDark ? COLORS.primary : '#e1f5fe',
+        avatarTextColor: isDark ? COLORS.onPrimary : COLORS.primary,
+    };
+};
 
 export default function WorkersScreen() {
     const router = useRouter();
-    const isDark = useColorScheme() === 'dark';
+    const {isDark, textColor, mutedText, cardBg, inputBg, borderColor, avatarBg, avatarTextColor} = useAppTheme();
 
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [loading, setLoading] = useState(true);
@@ -60,42 +75,56 @@ export default function WorkersScreen() {
         if (phone) Linking.openURL(`tel:${phone}`);
     };
 
-    const renderContactItem = ({item}: { item: Worker }) => (
-        <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push(`/workers/${item.id}` as any)}>
-            <View style={[
-                styles.card,
-                {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff'}
-            ]}>
-                <View style={styles.cardHeader}>
-                    <View style={[styles.avatar, {backgroundColor: isDark ? '#0a7ea4' : '#e1f5fe'}]}>
-                        <ThemedText style={[styles.avatarText, {color: isDark ? '#fff' : '#0a7ea4'}]}>
+    function returnRolEsp(rol: string) {
+        switch (rol) {
+            case 'worker':
+                return "Trabajador"
+                break;
+        }
+    }
+
+    const renderWorkerItem = ({item}: { item: Worker }) => (
+        <TouchableOpacity activeOpacity={0.7} onPress={() => router.push(`/workers/${item.id}` as any)} style={{marginBottom:15}}>
+            <View style={[G.card, {backgroundColor: cardBg, borderColor: borderColor}, shadow.sm]}>
+                <View style={G.row}>
+                    <View style={[G.avatarMd, {
+                        backgroundColor: avatarBg,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginRight: 15
+                    }]}>
+                        <ThemedText style={[G.avatarTextSm, {color: avatarTextColor, fontSize: 18}]}>
                             {item.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
                         </ThemedText>
                     </View>
 
-                    <View style={styles.infoContainer}>
-                        <ThemedText type="defaultSemiBold" style={styles.nameText}>
+                    <View style={G.flex1}>
+                        <ThemedText type="defaultSemiBold" style={[G.infoValue, {color: textColor, marginBottom: 4}]}>
                             {item.name}
                         </ThemedText>
-                        <View
-                            style={[styles.roleTag, {backgroundColor: isDark ? 'rgba(10, 126, 164, 0.2)' : 'rgba(10, 126, 164, 0.08)'}]}>
-                            <ThemedText style={styles.roleText}>{item.role || 'Colaborador'}</ThemedText>
+                        <View style={[G.badgeLg, {
+                            backgroundColor: COLORS.primaryBgMedium,
+                            alignSelf: 'flex-start',
+                            paddingHorizontal: 10,
+                            paddingVertical: 3
+                        }]}>
+                            <ThemedText style={[G.badgeText, {color: COLORS.primary}]}>
+                                {returnRolEsp(item.role)}
+                            </ThemedText>
                         </View>
                     </View>
 
-                    <View style={styles.actionButtons}>
+                    <View style={[G.row, {alignItems: 'center'}]}>
                         {item.phone && (
                             <TouchableOpacity
-                                style={styles.callButton}
+                                style={[G.iconBadgeSm, {backgroundColor: COLORS.success, ...shadow.success}]}
                                 onPress={() => makeCall(item.phone)}
                                 activeOpacity={0.6}
                             >
-                                <Ionicons name="call" size={18} color="#fff"/>
+                                <Ionicons name="call" size={18} color={COLORS.onPrimary}/>
                             </TouchableOpacity>
                         )}
-                        <Ionicons name="chevron-forward" size={20} color="#ccc" style={{marginLeft: 10}}/>
+                        <Ionicons name="chevron-forward" size={20} color={COLORS.mutedIcon} style={{marginLeft: 10}}/>
                     </View>
                 </View>
             </View>
@@ -103,153 +132,66 @@ export default function WorkersScreen() {
     );
 
     return (
-        <ThemedView style={{flex: 1}}>
-            <SafeAreaView style={{flex: 1}} edges={['top']}>
-                {/* Header Section */}
-                <View style={styles.headerContainer}>
-                    <View style={styles.headerRow}>
-                        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                            <Ionicons name="chevron-back" size={28} color={isDark ? "#fff" : "#333"}/>
+        <ThemedView style={G.flex1}>
+            <SafeAreaView style={G.flex1} edges={['top']}>
+                <View style={[G.pageHeader, {paddingTop: 10}]}>
+                    <View style={[G.rowBetween, {marginBottom: 20}]}>
+                        <TouchableOpacity onPress={() => router.push("/(owner)/perfil")} style={G.backBtnPlain}>
+                            <Ionicons name="chevron-back" size={28} color={textColor}/>
                         </TouchableOpacity>
-                        <ThemedText type="title" style={styles.headerTitle}>Equipo</ThemedText>
+                        <ThemedText type="title"
+                                    style={[G.pageTitle, {fontSize: 28, marginBottom: 0}]}>Equipo</ThemedText>
+                        <View style={{width: 40}}/>
                     </View>
 
-                    <View style={[styles.searchContainer, {backgroundColor: isDark ? '#1c1c1e' : '#f0f2f5'}]}>
-                        <Ionicons name="search" size={18} color="#8e8e93"/>
+                    <View style={[G.searchContainer, {backgroundColor: inputBg, borderColor: borderColor}]}>
+                        <Ionicons name="search" size={18} color={mutedText}/>
                         <TextInput
                             placeholder="Buscar por nombre..."
-                            placeholderTextColor="#8e8e93"
-                            style={[styles.searchInput, {color: isDark ? '#fff' : '#000'}]}
+                            placeholderTextColor={mutedText}
+                            style={[G.searchInput, {color: textColor}]}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
                         {searchQuery.length > 0 && (
                             <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={18} color="#8e8e93"/>
+                                <Ionicons name="close-circle" size={18} color={mutedText}/>
                             </TouchableOpacity>
                         )}
                     </View>
                 </View>
 
-                {/* Lista de Personal */}
                 <FlatList
                     data={filteredWorkers}
                     keyExtractor={(item) => item.id.toString()}
-                    renderItem={renderContactItem}
-                    contentContainerStyle={styles.listContent}
+                    renderItem={renderWorkerItem}
+                    contentContainerStyle={[G.pageContent, {paddingBottom: 100}]}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4"/>
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary}/>
                     }
                     ListEmptyComponent={
                         !loading ? (
-                            <View style={styles.emptyContainer}>
-                                <Ionicons name="people-outline" size={60} color={isDark ? "#333" : "#ccc"}/>
-                                <ThemedText style={styles.emptyText}>No hay personal registrado aún.</ThemedText>
+                            <View style={G.emptyContainer}>
+                                <View style={G.emptyIconCircle}>
+                                    <Ionicons name="people-outline" size={40} color={COLORS.primary}/>
+                                </View>
+                                <ThemedText style={[G.emptyText, {color: mutedText}]}>No hay personal registrado
+                                    aún.</ThemedText>
                             </View>
                         ) : (
-                            <ActivityIndicator size="small" color="#0a7ea4" style={{marginTop: 20}}/>
+                            <ActivityIndicator size="small" color={COLORS.primary} style={{marginTop: 20}}/>
                         )
                     }
                 />
 
-                {/* FAB */}
                 <TouchableOpacity
-                    style={styles.fab}
+                    style={[G.fab, shadow.primaryLg]}
                     activeOpacity={0.8}
                     onPress={() => router.push("/(owner)/workers/create-worker")}>
-                    <Ionicons name="person-add" size={26} color="#fff"/>
+                    <Ionicons name="person-add" size={26} color={COLORS.onPrimary}/>
                 </TouchableOpacity>
             </SafeAreaView>
         </ThemedView>
     );
 }
-
-const styles = StyleSheet.create({
-    headerContainer: {paddingHorizontal: 20, paddingTop: 10},
-    headerRow: {flexDirection: 'row', alignItems: 'center', marginBottom: 20},
-    backBtn: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'flex-start'
-    },
-    headerTitle: {fontSize: 28},
-
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 15,
-        height: 48,
-        borderRadius: 14,
-        marginBottom: 10,
-        gap: 10
-    },
-    searchInput: {flex: 1, fontSize: 15},
-
-    listContent: {padding: 20, paddingBottom: 100},
-    card: {
-        padding: 16,
-        borderRadius: 20,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(150, 150, 150, 0.1)',
-        ...Platform.select({
-            ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.05, shadowRadius: 8},
-            android: {elevation: 2}
-        })
-    },
-    cardHeader: {flexDirection: 'row', alignItems: 'center'},
-    avatar: {
-        width: 52,
-        height: 52,
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15,
-    },
-    avatarText: {fontWeight: 'bold', fontSize: 18},
-    infoContainer: {flex: 1},
-    nameText: {fontSize: 17, fontWeight: '700', marginBottom: 4},
-    roleTag: {
-        alignSelf: 'flex-start',
-        paddingHorizontal: 10,
-        paddingVertical: 3,
-        borderRadius: 8,
-    },
-    roleText: {fontSize: 10, color: '#0a7ea4', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5},
-
-    actionButtons: {flexDirection: 'row', alignItems: 'center'},
-    callButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: '#10b981',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#10b981',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-    },
-
-    emptyContainer: {alignItems: 'center', marginTop: 80, opacity: 0.8},
-    emptyText: {textAlign: 'center', marginTop: 15, opacity: 0.5, fontSize: 14},
-
-    fab: {
-        position: 'absolute',
-        bottom: 30,
-        right: 25,
-        width: 60,
-        height: 60,
-        borderRadius: 18,
-        backgroundColor: '#0a7ea4',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#0a7ea4',
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 5,
-    }
-});

@@ -59,7 +59,7 @@ export const cotizacionesService = {
         try {
             const {data, error} = await supabase
                 .from('cotizaciones')
-                .select('*')
+                .select('* , profiles!created_by(name)')
                 .order('created_at', {ascending: false});
 
             if (error) throw error;

@@ -1,15 +1,14 @@
 import React, {useState, useEffect} from 'react';
 import {
     View,
-    StyleSheet,
     ScrollView,
     TouchableOpacity,
     Alert,
     ActivityIndicator,
     Linking,
     Image,
-    Platform,
-    Modal
+    Modal,
+    useColorScheme,
 } from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
@@ -18,16 +17,29 @@ import ImageViewer from 'react-native-image-zoom-viewer';
 
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
-import {useThemeColor} from '@/hooks/use-theme-color';
-
 import {updateJob} from '@/libs/owner/jobs/update-jobs';
 import {getAllWorkers} from '@/libs/owner/workers/get-workers';
 import {Worker} from '@/libs/types/worker';
 import {Job} from "@/libs/types/job";
+import {G, COLORS, shadow} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        cardBg: isDark ? COLORS.cardDark : COLORS.cardLight,
+        surfaceBg: isDark ? COLORS.surfaceMedium : COLORS.surfaceLight,
+        borderColor: COLORS.border,
+    };
+};
 
 export default function JobDetailScreen() {
     const {id} = useLocalSearchParams();
     const router = useRouter();
+    const {isDark, textColor, mutedText, cardBg, surfaceBg, borderColor} = useAppTheme();
 
     const [job, setJob] = useState<Job | null>(null);
     const [workers, setWorkers] = useState<Worker[]>([]);
@@ -35,7 +47,6 @@ export default function JobDetailScreen() {
     const [updating, setUpdating] = useState(false);
     const [showWorkerList, setShowWorkerList] = useState(false);
     const [imageViewerVisible, setImageViewerVisible] = useState(false);
-    const textColor = useThemeColor({}, 'text');
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -65,7 +76,7 @@ export default function JobDetailScreen() {
         setUpdating(true);
         try {
             const workerName = workers.find((worker) => worker.id === updates.worker_id);
-            console.log(workerName)
+            console.log(workerName);
             await updateJob(String(id), updates);
             if (job) setJob({...job, ...updates});
             if (updates.worker_id) setShowWorkerList(false);
@@ -89,129 +100,176 @@ export default function JobDetailScreen() {
     const assignedWorker = workers.find(w => w.id === job?.worker_id);
 
     const getStatusColor = (status: string) => {
-        const colors = {'finalizado': '#10b981', 'en proceso': '#3b82f6', 'pendiente': '#f59e0b'};
-        return colors[status.toLowerCase() as keyof typeof colors] || '#666';
+        const colors = {'finalizado': COLORS.success, 'en proceso': '#3b82f6', 'pendiente': '#f59e0b'};
+        return colors[status.toLowerCase() as keyof typeof colors] || mutedText;
     };
 
-    if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large"
-                                                                             color="#0a7ea4"/></ThemedView>;
-    if (!job) return <ThemedView style={styles.center}><ThemedText>No disponible</ThemedText></ThemedView>;
+    if (loading) return <ThemedView style={G.center}><ActivityIndicator size="large"
+                                                                        color={COLORS.primary}/></ThemedView>;
+    if (!job) return <ThemedView style={G.center}><ThemedText>No disponible</ThemedText></ThemedView>;
 
     return (
-        <ThemedView style={{flex: 1}}>
-            <View style={styles.headerContainer}>
-                <TouchableOpacity
-                    onPress={() => router.back()}
-                    style={styles.backBtn}
-                    activeOpacity={0.7}>
+        <ThemedView style={G.flex1}>
+
+            <View style={[G.topBarSafeArea, {
+                justifyContent: 'space-between',
+                borderBottomWidth: 1,
+                borderBottomColor: borderColor
+            }]}>
+                <TouchableOpacity onPress={() => router.back()} style={G.backBtn} activeOpacity={0.7}>
                     <Ionicons name="chevron-back" size={28} color={textColor}/>
                 </TouchableOpacity>
-
-                <View style={styles.titleWrapper}>
+                <View style={{flex: 1, marginHorizontal: 12}}>
                     <ThemedText type="subtitle" numberOfLines={1}>Detalle del Trabajo</ThemedText>
                 </View>
-
-                <View style={[styles.badge, {backgroundColor: getStatusColor(job.status)}]}>
-                    <ThemedText style={styles.badgeText}>{job.status}</ThemedText>
+                <View style={[G.badge, {backgroundColor: getStatusColor(job.status)}]}>
+                    <ThemedText style={[G.badgeTextWhite, {fontSize: 12}]}>{job.status}</ThemedText>
                 </View>
             </View>
-            <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-                <View style={styles.headerSection}>
-                    <ThemedText type="title" style={styles.title}>{job.title}</ThemedText>
+            <ScrollView contentContainerStyle={[G.scrollContent, {paddingTop: 0}]} showsVerticalScrollIndicator={false}>
+                <View style={{marginBottom: 25}}>
+                    <ThemedText type="title" style={[G.pageTitle, {marginBottom: 20, color: textColor}]}>
+                        {job.title}
+                    </ThemedText>
                     <TouchableOpacity
-                        style={styles.mainImageWrapper}
                         onPress={() => job.image_url && setImageViewerVisible(true)}
                         disabled={!job.image_url}
                         activeOpacity={0.8}>
-                        <View style={styles.mainImageWrapper}>
+                        <View style={[G.imageContainerLg, {height: 250, borderRadius: 28, ...shadow.md}]}>
                             {job.image_url ? (
-                                <Image source={{uri: job.image_url}} style={styles.jobImage}/>
+                                <Image source={{uri: job.image_url}} style={G.imageFull}/>
                             ) : (
-                                <View style={styles.noImagePlaceholder}>
-                                    <Ionicons name="image-outline" size={48} color="#aaa"/>
-                                    <ThemedText style={{color: '#aaa'}}>Sin evidencia fotográfica</ThemedText>
+                                <View style={[G.center, {gap: 10}]}>
+                                    <Ionicons name="image-outline" size={48} color={COLORS.mutedIcon}/>
+                                    <ThemedText style={{color: COLORS.mutedIcon}}>Sin evidencia fotográfica</ThemedText>
                                 </View>
                             )}
                         </View>
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.infoGrid}>
-                    <View style={styles.infoCard}>
-                        <Ionicons name="calendar" size={22} color="#0a7ea4"/>
-                        <ThemedText style={styles.infoCardLabel}>Fecha</ThemedText>
-                        <ThemedText type="defaultSemiBold" style={styles.infoCardValue}>{dateInfo.day}</ThemedText>
+                <View style={G.infoGrid}>
+                    <View style={[G.infoGridCard, {backgroundColor: surfaceBg, borderColor: borderColor}]}>
+                        <Ionicons name="calendar" size={22} color={COLORS.primary}/>
+                        <ThemedText style={G.infoGridLabel}>Fecha</ThemedText>
+                        <ThemedText type="defaultSemiBold" style={G.infoGridValue}>{dateInfo.day}</ThemedText>
                     </View>
-                    <View style={[styles.infoCard, {flex: 0.4}]}>
-                        <Ionicons name="time" size={22} color="#0a7ea4"/>
-                        <ThemedText style={styles.infoCardLabel}>Hora</ThemedText>
-                        <ThemedText type="defaultSemiBold" style={styles.infoCardValue}>{dateInfo.time}</ThemedText>
+                    <View style={[G.infoGridCard, {flex: 0.4, backgroundColor: surfaceBg, borderColor: borderColor}]}>
+                        <Ionicons name="time" size={22} color={COLORS.primary}/>
+                        <ThemedText style={G.infoGridLabel}>Hora</ThemedText>
+                        <ThemedText type="defaultSemiBold" style={G.infoGridValue}>{dateInfo.time}</ThemedText>
                     </View>
                 </View>
 
-                <TouchableOpacity style={styles.locationCard}
-                                  onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`)}>
-                    <View style={styles.iconCircle}>
-                        <Ionicons name="location" size={22} color="#fff"/>
+                <TouchableOpacity
+                    style={[G.locationCard, {marginBottom: 25}]}
+                    onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`)}>
+                    <View style={[G.iconCirclePrimary, {backgroundColor: COLORS.primary}]}>
+                        <Ionicons name="location" size={22} color={COLORS.onPrimary}/>
                     </View>
                     <View style={{flex: 1, marginLeft: 15}}>
-                        <ThemedText type="defaultSemiBold" style={{fontSize: 16}}>Dirección</ThemedText>
-                        <ThemedText style={styles.subText}>{job.address}</ThemedText>
+                        <ThemedText type="defaultSemiBold"
+                                    style={{fontSize: 16, color: textColor}}>Dirección</ThemedText>
+                        <ThemedText style={[G.infoValueSm, {color: mutedText, marginTop: 4}]}>{job.address}</ThemedText>
                     </View>
-                    <Ionicons name="navigate-circle" size={32} color="#10b981"/>
+                    <Ionicons name="navigate-circle" size={32} color={COLORS.success}/>
                 </TouchableOpacity>
 
-                <View style={styles.assignmentSection}>
-                    <ThemedText style={styles.label}>Responsable</ThemedText>
-                    <TouchableOpacity style={styles.workerSelector} onPress={() => setShowWorkerList(!showWorkerList)}>
-                        <View style={styles.workerInfoRow}>
-                            <View
-                                style={[styles.avatar, {backgroundColor: assignedWorker ? '#0a7ea4' : 'rgba(150,150,150,0.3)'}]}>
-                                <ThemedText style={styles.avatarLetter}>{assignedWorker?.name[0] || '?'}</ThemedText>
+                <View style={{marginBottom: 25}}>
+                    <ThemedText style={G.sectionLabel}>Responsable</ThemedText>
+                    <TouchableOpacity
+                        style={[G.cardSurface, {
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: 12
+                        }]}
+                        onPress={() => setShowWorkerList(!showWorkerList)}>
+                        <View style={[G.row, {alignItems: 'center'}]}>
+                            <View style={[G.avatarSm, {
+                                backgroundColor: assignedWorker ? COLORS.primary : COLORS.surfaceStrong,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                marginRight: 15
+                            }]}>
+                                <ThemedText
+                                    style={[G.avatarTextSm, {color: assignedWorker ? COLORS.onPrimary : mutedText}]}>
+                                    {assignedWorker?.name[0] || '?'}
+                                </ThemedText>
                             </View>
                             <View>
-                                <ThemedText type="defaultSemiBold" style={{fontSize: 16}}>
+                                <ThemedText type="defaultSemiBold" style={{fontSize: 16, color: textColor}}>
                                     {assignedWorker ? assignedWorker.name : "Pendiente de asignar"}
                                 </ThemedText>
-                                <ThemedText style={{fontSize: 12, opacity: 0.5}}>Toca para cambiar</ThemedText>
+                                <ThemedText style={{fontSize: 12, color: mutedText}}>Toca para cambiar</ThemedText>
                             </View>
                         </View>
-                        <Ionicons name={showWorkerList ? "chevron-up" : "chevron-down"} size={20} color="#0a7ea4"/>
+                        <Ionicons name={showWorkerList ? "chevron-up" : "chevron-down"} size={20}
+                                  color={COLORS.primary}/>
                     </TouchableOpacity>
 
                     {showWorkerList && (
-                        <ThemedView style={styles.dropdown}>
+                        <View style={[G.dropdownBox, {
+                            marginTop: 10,
+                            padding: 10,
+                            backgroundColor: surfaceBg,
+                            borderColor: borderColor
+                        }]}>
                             {workers.map(w => (
-                                <TouchableOpacity key={w.id} style={styles.workerOption}
+                                <TouchableOpacity key={w.id} style={G.dropdownOption}
                                                   onPress={() => handleUpdate({worker_id: w.id})}>
-                                    <ThemedText
-                                        style={[styles.workerOptionText, job.worker_id === w.id && styles.activeText]}>{w.name}</ThemedText>
+                                    <ThemedText style={[G.dropdownOptionActive, job.worker_id === w.id && {
+                                        color: COLORS.primary,
+                                        fontWeight: 'bold'
+                                    }]}>
+                                        {w.name}
+                                    </ThemedText>
                                     {job.worker_id === w.id &&
-                                        <Ionicons name="checkmark-circle" size={20} color="#0a7ea4"/>}
+                                        <Ionicons name="checkmark-circle" size={20} color={COLORS.primary}/>}
                                 </TouchableOpacity>
                             ))}
-                        </ThemedView>
+                        </View>
                     )}
                 </View>
 
-                <View style={styles.descSection}>
-                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Detalles del Servicio</ThemedText>
-                    <ThemedText
-                        style={styles.descriptionText}>{job.description || "El cliente no proporcionó una descripción adicional."}</ThemedText>
+                <View style={{marginBottom: 30}}>
+                    <ThemedText type="defaultSemiBold" style={[G.sectionTitle, {fontSize: 18, color: textColor}]}>Detalles
+                        del Servicio</ThemedText>
+                    <ThemedText style={[G.infoValue, {fontSize: 15, lineHeight: 22, opacity: 0.8, color: mutedText}]}>
+                        {job.description || "El cliente no proporcionó una descripción adicional."}
+                    </ThemedText>
                 </View>
 
-                <View style={styles.statusSection}>
-                    <ThemedText style={styles.label}>Actualizar Estado</ThemedText>
-                    <View style={styles.statusGrid}>
+                <View style={{marginTop: 10}}>
+                    <ThemedText style={G.sectionLabel}>Actualizar Estado</ThemedText>
+                    <View style={[G.row, {gap: 8}]}>
                         {['pendiente', 'en proceso', 'finalizado'].map((s) => (
                             <TouchableOpacity
                                 key={s}
-                                style={[styles.statusBtn, job.status.toLowerCase() === s && {backgroundColor: getStatusColor(s)}]}
+                                style={[
+                                    G.btnOutlinePrimary,
+                                    {
+                                        flex: 1,
+                                        paddingVertical: 14,
+                                        borderRadius: 18,
+                                        borderStyle: 'solid',
+                                        borderColor: borderColor
+                                    },
+                                    job.status.toLowerCase() === s && {
+                                        backgroundColor: getStatusColor(s),
+                                        borderColor: getStatusColor(s)
+                                    }
+                                ]}
                                 onPress={() => handleUpdate({status: s})}
                             >
                                 <ThemedText
-                                    style={[styles.btnText, job.status.toLowerCase() === s && {color: '#fff'}]}>{s}</ThemedText>
+                                    style={[
+                                        {fontSize: 12, fontWeight: '700', textTransform: 'uppercase', color: mutedText},
+                                        job.status.toLowerCase() === s && {color: COLORS.onPrimary}
+                                    ]}>
+                                    {s}
+                                </ThemedText>
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -219,6 +277,7 @@ export default function JobDetailScreen() {
 
                 <View style={{height: 50}}/>
             </ScrollView>
+
             <Modal visible={imageViewerVisible} transparent={true} onRequestClose={() => setImageViewerVisible(false)}>
                 <ImageViewer
                     imageUrls={[{url: job?.image_url || ''}]}
@@ -227,9 +286,14 @@ export default function JobDetailScreen() {
                     onCancel={() => setImageViewerVisible(false)}
                     renderHeader={() => (
                         <TouchableOpacity
-                            style={styles.closeButton}
-                            onPress={() => setImageViewerVisible(false)}
-                        >
+                            style={[G.closeModalBtn, {
+                                top: 50,
+                                right: 20,
+                                padding: 10,
+                                borderRadius: 20,
+                                backgroundColor: 'rgba(0,0,0,0.5)'
+                            }]}
+                            onPress={() => setImageViewerVisible(false)}>
                             <Ionicons name="close" size={30} color="#fff"/>
                         </TouchableOpacity>
                     )}
@@ -237,167 +301,9 @@ export default function JobDetailScreen() {
                 />
             </Modal>
 
-            {updating && <View style={styles.loadingOverlay}><ActivityIndicator size="large" color="#fff"/></View>}
+
+            {updating &&
+                <View style={G.loaderOverlay}><ActivityIndicator size="large" color={COLORS.onPrimary}/></View>}
         </ThemedView>
     );
 }
-
-const styles = StyleSheet.create({
-    center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
-    topBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: Platform.OS === 'ios' ? 60 : 40,
-        paddingBottom: 15,
-        backgroundColor: 'transparent',
-    },
-    headerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: Platform.OS === 'ios' ? 60 : 20,
-        paddingBottom: 15,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: 'rgba(150,150,150,0.2)',
-    },
-    titleWrapper: {
-        flex: 1,
-        marginHorizontal: 12,
-        alignItems: 'flex-start',
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(150,150,150,0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    badge: {paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12},
-    badgeText: {color: '#fff', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase'},
-    scroll: {padding: 20},
-
-    headerSection: {marginBottom: 25},
-    title: {fontSize: 28, fontWeight: '800', marginBottom: 20},
-
-    mainImageWrapper: {
-        width: '100%',
-        height: 250,
-        borderRadius: 28,
-        overflow: 'hidden',
-        backgroundColor: 'rgba(150,150,150,0.1)',
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-    },
-    jobImage: {width: '100%', height: '100%', resizeMode: 'cover'},
-    noImagePlaceholder: {flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10},
-
-    infoGrid: {flexDirection: 'row', gap: 12, marginBottom: 20},
-    infoCard: {
-        flex: 1,
-        backgroundColor: 'rgba(10, 126, 164, 0.05)',
-        padding: 15,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(10, 126, 164, 0.1)',
-    },
-    infoCardLabel: {fontSize: 11, opacity: 0.5, textTransform: 'uppercase', marginTop: 5},
-    infoCardValue: {fontSize: 14, marginTop: 2, textTransform: 'capitalize'},
-
-    locationCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(150, 150, 150, 0.05)',
-        padding: 16,
-        borderRadius: 24,
-        marginBottom: 25,
-        borderWidth: 1,
-        borderColor: 'rgba(150, 150, 150, 0.1)',
-    },
-    iconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#0a7ea4',
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    subText: {fontSize: 14, opacity: 0.6, marginTop: 4},
-
-    assignmentSection: {marginBottom: 25},
-    label: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        opacity: 0.4,
-        marginBottom: 10,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginLeft: 5
-    },
-    workerSelector: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: 'rgba(150,150,150,0.05)',
-        padding: 12,
-        borderRadius: 20,
-    },
-    avatar: {width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginRight: 15},
-    avatarLetter: {color: '#fff', fontSize: 18, fontWeight: 'bold'},
-    workerInfoRow: {flexDirection: 'row', alignItems: 'center'},
-
-    dropdown: {
-        marginTop: 10,
-        borderRadius: 20,
-        padding: 10,
-        borderWidth: 1,
-        borderColor: 'rgba(150, 150, 150, 0.1)'
-    },
-    workerOption: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(150, 150, 150, 0.05)'
-    },
-    workerOptionText: {fontSize: 15},
-    activeText: {color: '#0a7ea4', fontWeight: 'bold'},
-
-    descSection: {marginBottom: 30},
-    sectionTitle: {fontSize: 18, marginBottom: 10},
-    descriptionText: {fontSize: 15, lineHeight: 22, opacity: 0.8},
-
-    statusSection: {marginTop: 10},
-    statusGrid: {flexDirection: 'row', gap: 8},
-    statusBtn: {
-        flex: 1,
-        paddingVertical: 14,
-        borderRadius: 18,
-        backgroundColor: 'rgba(150, 150, 150, 0.08)',
-        alignItems: 'center'
-    },
-    btnText: {fontSize: 12, fontWeight: '700', textTransform: 'uppercase'},
-
-    loadingOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 99
-    },
-    closeButton: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 50 : 30,
-        right: 20,
-        zIndex: 10,
-        padding: 10,
-        borderRadius: 20,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-    },
-});
