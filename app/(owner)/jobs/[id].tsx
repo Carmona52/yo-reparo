@@ -14,7 +14,7 @@ import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageViewer from 'react-native-image-zoom-viewer';
-
+import {EditJobModal} from "@/components/modals/owner/edit-job";
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {updateJob} from '@/libs/owner/jobs/update-jobs';
@@ -40,7 +40,7 @@ export default function JobDetailScreen() {
     const {id} = useLocalSearchParams();
     const router = useRouter();
     const {isDark, textColor, mutedText, cardBg, surfaceBg, borderColor} = useAppTheme();
-
+    const [showEditModal, setShowEditModal] = useState(false);
     const [job, setJob] = useState<Job | null>(null);
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [loading, setLoading] = useState(true);
@@ -275,6 +275,29 @@ export default function JobDetailScreen() {
                     </View>
                 </View>
 
+                <TouchableOpacity
+                    style={[
+                        G.btnOutlinePrimary,
+                        {
+                            width: '100%',
+                            flexDirection: 'row',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: 10,
+                            borderStyle: 'solid',
+                            backgroundColor: COLORS.primaryBgMedium,
+                            borderColor: COLORS.primaryBorder,
+                            marginTop:15
+                        }
+                    ]}
+                    onPress={() => setShowEditModal(true)}
+                >
+                    <Ionicons name="create-outline" size={20} color={COLORS.primary} />
+                    <ThemedText style={{ color: COLORS.primary, fontWeight: '600', fontSize: 16 }}>
+                        Modificar Información
+                    </ThemedText>
+                </TouchableOpacity>
+
                 <View style={{height: 50}}/>
             </ScrollView>
 
@@ -304,6 +327,15 @@ export default function JobDetailScreen() {
 
             {updating &&
                 <View style={G.loaderOverlay}><ActivityIndicator size="large" color={COLORS.onPrimary}/></View>}
+            {job && (
+                <EditJobModal
+                    visible={showEditModal}
+                    onClose={() => setShowEditModal(false)}
+                    job={job}
+                    onSaveSuccess={(updatedJob) => setJob(updatedJob)}
+                    onDeleteSuccess={() => router.back()}
+                />
+            )}
         </ThemedView>
     );
 }

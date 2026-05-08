@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     View,
     TouchableOpacity,
@@ -7,14 +7,14 @@ import {
     ActivityIndicator,
     useColorScheme,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {Ionicons} from '@expo/vector-icons';
+import {useRouter} from 'expo-router';
 
-import { ThemedView } from "@/components/themed-view";
-import { ThemedText } from "@/components/themed-text";
-import { supabase } from "@/libs/supabase";
-import { G, COLORS, shadow } from "@/styles/global-styles";
+import {ThemedView} from "@/components/themed-view";
+import {ThemedText} from "@/components/themed-text";
+import {supabase} from "@/libs/supabase";
+import {G, COLORS, shadow} from "@/styles/global-styles";
 
 const useAppTheme = () => {
     const scheme = useColorScheme();
@@ -32,7 +32,7 @@ const useAppTheme = () => {
 
 export default function ProfileScreen() {
     const router = useRouter();
-    const { isDark, textColor, mutedText, cardBg, surfaceBg } = useAppTheme();
+    const {isDark, textColor, mutedText, cardBg, surfaceBg} = useAppTheme();
 
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -43,9 +43,9 @@ export default function ProfileScreen() {
 
     async function getProfile() {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const {data: {user}} = await supabase.auth.getUser();
             if (user) {
-                const { data, error } = await supabase
+                const {data, error} = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', user.id)
@@ -62,17 +62,17 @@ export default function ProfileScreen() {
 
     async function handleSignOut() {
         Alert.alert("Cerrar Sesión", "¿Estás seguro de que quieres salir?", [
-            { text: "Cancelar", style: "cancel" },
+            {text: "Cancelar", style: "cancel"},
             {
                 text: "Salir",
                 style: "destructive",
                 onPress: async () => {
                     try {
-                        const { data: { user } } = await supabase.auth.getUser();
+                        const {data: {user}} = await supabase.auth.getUser();
                         if (user) {
-                            const { error } = await supabase
+                            const {error} = await supabase
                                 .from('profiles')
-                                .update({ expo_token: null })
+                                .update({expo_token: null})
                                 .eq('id', user.id);
                             if (error) {
                                 console.error("Error limpiando el token de Expo:", error.message);
@@ -94,10 +94,23 @@ export default function ProfileScreen() {
     if (loading) {
         return (
             <ThemedView style={G.center}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-                <ThemedText style={{ marginTop: 10, color: mutedText }}>Cargando perfil...</ThemedText>
+                <ActivityIndicator size="large" color={COLORS.primary}/>
+                <ThemedText style={{marginTop: 10, color: mutedText}}>Cargando perfil...</ThemedText>
             </ThemedView>
         );
+    }
+
+    function returnRolEsp(rol: string) {
+        switch (rol) {
+            case 'worker':
+                return "Trabajador"
+                break;
+            case 'owner':
+                return 'Dueño'
+                break;
+
+
+        }
     }
 
     return (
@@ -106,21 +119,28 @@ export default function ProfileScreen() {
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={G.scrollContent}>
 
                     <View style={G.profileHeader}>
-                        <View style={[G.avatarCircle, { backgroundColor: surfaceBg }]}>
-                            <Ionicons name="person" size={50} color={COLORS.primary} />
+                        <View style={[G.avatarCircle, {backgroundColor: surfaceBg}]}>
+                            <Ionicons name="person" size={50} color={COLORS.primary}/>
                         </View>
-                        <ThemedText type="title" style={[G.profileName, { color: textColor }]}>
+                        <ThemedText type="title" style={[G.profileName, {color: textColor}]}>
                             {profile?.name || "Usuario"}
                         </ThemedText>
-                        <View style={[G.roleBadge, { backgroundColor: profile?.role === 'owner' ? COLORS.primary : COLORS.success }]}>
-                            <ThemedText style={{ color: 'white', fontSize:20 }}>
-                                {profile?.role?.toUpperCase() || "SIN ROL"}
+                        <View
+                            style={[G.roleBadge, {backgroundColor: profile?.role === 'owner' ? COLORS.primary : COLORS.success}]}>
+                            <ThemedText style={{color: 'white', fontSize: 20}}>
+                                {returnRolEsp(profile?.role)}
                             </ThemedText>
                         </View>
                     </View>
 
-                    <ThemedText style={[G.sectionLabel, { marginTop: 0 }]}>Información Personal</ThemedText>
-                    <View style={[G.card, { backgroundColor: cardBg, borderColor: COLORS.border, padding: 0, overflow: 'hidden', marginBottom: 25 }]}>
+                    <ThemedText style={[G.sectionLabel, {marginTop: 0}]}>Información Personal</ThemedText>
+                    <View style={[G.card, {
+                        backgroundColor: cardBg,
+                        borderColor: COLORS.border,
+                        padding: 0,
+                        overflow: 'hidden',
+                        marginBottom: 25
+                    }]}>
                         <ProfileItem
                             icon="mail-outline"
                             label="Correo Electrónico"
@@ -146,54 +166,58 @@ export default function ProfileScreen() {
                         <>
                             <ThemedText style={G.sectionLabel}>Administración</ThemedText>
                             <TouchableOpacity
-                                style={[G.menuItem, { backgroundColor: cardBg, borderColor: COLORS.border, borderWidth: 1 }]}
+                                style={[G.menuItem, {
+                                    backgroundColor: cardBg,
+                                    borderColor: COLORS.border,
+                                    borderWidth: 1
+                                }]}
                                 activeOpacity={0.7}
                                 onPress={() => router.push('/(owner)/workers')}
                             >
-                                <View style={[G.iconBadge, { backgroundColor: COLORS.primaryBgMedium }]}>
-                                    <Ionicons name="people" size={24} color={COLORS.primary} />
+                                <View style={[G.iconBadge, {backgroundColor: COLORS.primaryBgMedium}]}>
+                                    <Ionicons name="people" size={24} color={COLORS.primary}/>
                                 </View>
-                                <View style={{ flex: 1, marginLeft: 15 }}>
-                                    <ThemedText type="defaultSemiBold" style={{ fontSize: 16, color: textColor }}>
+                                <View style={{flex: 1, marginLeft: 15}}>
+                                    <ThemedText type="defaultSemiBold" style={{fontSize: 16, color: textColor}}>
                                         Gestionar Trabajadores
                                     </ThemedText>
-                                    <ThemedText style={{ color: mutedText, fontSize: 13 }}>
+                                    <ThemedText style={{color: mutedText, fontSize: 13}}>
                                         Altas, bajas y edición
                                     </ThemedText>
                                 </View>
-                                <Ionicons name="chevron-forward" size={20} color={COLORS.mutedIcon} />
+                                <Ionicons name="chevron-forward" size={20} color={COLORS.mutedIcon}/>
                             </TouchableOpacity>
                         </>
                     )}
 
                     <TouchableOpacity
-                        style={[G.signOutBtn, { marginTop: 10 }]}
+                        style={[G.signOutBtn, {marginTop: 10}]}
                         activeOpacity={0.8}
                         onPress={handleSignOut}>
-                        <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
+                        <Ionicons name="log-out-outline" size={20} color={COLORS.danger}/>
                         <ThemedText style={G.signOutText}>Cerrar Sesión</ThemedText>
                     </TouchableOpacity>
 
-                    <ThemedText style={G.versionText}>Yo Reparo • v1.0.0</ThemedText>
+                    <ThemedText style={G.versionText}>Yo Reparo • v1.1.0</ThemedText>
                 </ScrollView>
             </SafeAreaView>
         </ThemedView>
     );
 }
 
-function ProfileItem({ icon, label, value, isDark, isLast }: any) {
-    const { mutedText, textColor } = useAppTheme();
+function ProfileItem({icon, label, value, isDark, isLast}: any) {
+    const {mutedText, textColor} = useAppTheme();
     return (
         <View style={[
             G.infoRow,
-            !isLast && { borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle }
+            !isLast && {borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle}
         ]}>
-            <View style={[G.iconBadgeSm, { backgroundColor: COLORS.primaryBgMedium, marginRight: 15 }]}>
-                <Ionicons name={icon} size={20} color={COLORS.primary} />
+            <View style={[G.iconBadgeSm, {backgroundColor: COLORS.primaryBgMedium, marginRight: 15}]}>
+                <Ionicons name={icon} size={20} color={COLORS.primary}/>
             </View>
             <View style={G.infoTextGroup}>
                 <ThemedText style={G.infoLabel}>{label}</ThemedText>
-                <ThemedText style={[G.infoValue, { color: textColor }]} numberOfLines={1}>
+                <ThemedText style={[G.infoValue, {color: textColor}]} numberOfLines={1}>
                     {value}
                 </ThemedText>
             </View>

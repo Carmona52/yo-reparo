@@ -1,12 +1,27 @@
 import React, {useState, useEffect} from 'react';
 import {
-    Modal, StyleSheet, View, TextInput, TouchableOpacity,
-    ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView
+    Modal, View, TextInput, TouchableOpacity,
+    ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, useColorScheme
 } from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import {ThemedText} from "@/components/themed-text";
 import {Worker} from '@/libs/types/worker';
 import {updateWorkerInfo} from "@/libs/owner/workers/update-worker";
+import {G, COLORS} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        cardBg: isDark ? COLORS.cardDark : COLORS.cardLight,
+        inputBg: isDark ? COLORS.inputDark : COLORS.inputLight,
+        borderColor: COLORS.border,
+        placeholderColor: COLORS.placeholder,
+    };
+};
 
 interface EditWorkerModalProps {
     visible: boolean;
@@ -16,6 +31,7 @@ interface EditWorkerModalProps {
 }
 
 export default function EditWorkerModal({visible, onClose, worker, onSuccess}: EditWorkerModalProps) {
+    const {textColor, cardBg, inputBg, borderColor, placeholderColor} = useAppTheme();
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
@@ -44,7 +60,6 @@ export default function EditWorkerModal({visible, onClose, worker, onSuccess}: E
         setLoading(true);
         try {
             const response = await updateWorkerInfo(worker.id, formData);
-
             if (response && response.data) {
                 Alert.alert("Éxito", "Perfil actualizado correctamente");
                 onSuccess(response.data);
@@ -52,7 +67,6 @@ export default function EditWorkerModal({visible, onClose, worker, onSuccess}: E
             } else {
                 throw new Error("No se recibieron datos actualizados");
             }
-
         } catch (error: any) {
             console.error(error);
             Alert.alert("Error", "No se pudo actualizar el perfil");
@@ -63,52 +77,75 @@ export default function EditWorkerModal({visible, onClose, worker, onSuccess}: E
 
     return (
         <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
-            <View style={styles.overlay}>
+            <View style={G.modalOverlayCentered}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.modalContainer}
+                    style={[G.modalCard, {backgroundColor: cardBg, borderColor, padding: 20, maxHeight: '80%'}]}
                 >
-                    <View style={styles.header}>
-                        <ThemedText type="defaultSemiBold" style={styles.title}>Editar Perfil</ThemedText>
-                        <TouchableOpacity onPress={onClose}>
-                            <Ionicons name="close" size={24} color="#333"/>
+                    <View style={G.modalHeaderInner}>
+                        <ThemedText type="defaultSemiBold" style={{fontSize: 18, color: textColor}}>Editar
+                            Perfil</ThemedText>
+                        <TouchableOpacity onPress={onClose} style={G.modalCloseBtn}>
+                            <Ionicons name="close" size={24} color={textColor}/>
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView showsVerticalScrollIndicator={false}>
-                        <ThemedText style={styles.label}>Nombre Completo</ThemedText>
+                        <ThemedText style={[G.sectionLabel, {marginBottom: 5, marginLeft: 4}]}>Nombre
+                            Completo</ThemedText>
                         <TextInput
-                            style={styles.input}
+                            style={[G.inputBordered, {
+                                color: textColor,
+                                backgroundColor: inputBg,
+                                borderColor,
+                                marginBottom: 15
+                            }]}
                             value={formData.name}
                             onChangeText={(t) => setFormData({...formData, name: t})}
                             placeholder="Nombre del trabajador"
+                            placeholderTextColor={placeholderColor}
                         />
 
-                        <ThemedText style={styles.label}>Teléfono</ThemedText>
+                        <ThemedText style={[G.sectionLabel, {marginBottom: 5, marginLeft: 4}]}>Teléfono</ThemedText>
                         <TextInput
-                            style={styles.input}
+                            style={[G.inputBordered, {
+                                color: textColor,
+                                backgroundColor: inputBg,
+                                borderColor,
+                                marginBottom: 15
+                            }]}
                             value={formData.phone}
                             onChangeText={(t) => setFormData({...formData, phone: t})}
                             keyboardType="phone-pad"
                             placeholder="238 000 0000"
+                            placeholderTextColor={placeholderColor}
                         />
 
-                        <ThemedText style={styles.label}>Correo Electrónico</ThemedText>
+                        <ThemedText style={[G.sectionLabel, {marginBottom: 5, marginLeft: 4}]}>Correo
+                            Electrónico</ThemedText>
                         <TextInput
-                            style={styles.input}
+                            style={[G.inputBordered, {
+                                color: textColor,
+                                backgroundColor: inputBg,
+                                borderColor,
+                                marginBottom: 15
+                            }]}
                             value={formData.email}
                             onChangeText={(t) => setFormData({...formData, email: t})}
                             keyboardType="email-address"
                             autoCapitalize="none"
                             placeholder="correo@ejemplo.com"
+                            placeholderTextColor={placeholderColor}
                         />
 
                         <TouchableOpacity
-                            style={[styles.saveBtn, loading && styles.disabledBtn]}
+                            style={[G.btnPrimary, loading && G.btnDisabled, {marginTop: 10}]}
                             onPress={handleUpdate}
-                            disabled={loading}>
-                            {loading ? <ActivityIndicator color="#fff"/> :
-                                <ThemedText style={styles.saveBtnText}>Guardar Cambios</ThemedText>}
+                            disabled={loading}
+                        >
+                            {loading ? <ActivityIndicator color={COLORS.onPrimary}/> :
+                                <ThemedText style={G.btnText}>Guardar Cambios</ThemedText>
+                            }
                         </TouchableOpacity>
                     </ScrollView>
                 </KeyboardAvoidingView>
@@ -116,30 +153,3 @@ export default function EditWorkerModal({visible, onClose, worker, onSuccess}: E
         </Modal>
     );
 }
-
-const styles = StyleSheet.create({
-    overlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20},
-    modalContainer: {backgroundColor: '#fff', borderRadius: 24, padding: 20, maxHeight: '80%'},
-    header: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20},
-    title: {fontSize: 18},
-    label: {fontSize: 12, opacity: 0.5, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 5, marginLeft: 4},
-    input: {
-        backgroundColor: '#f9f9f9',
-        borderRadius: 12,
-        padding: 15,
-        fontSize: 16,
-        marginBottom: 15,
-        borderWidth: 1,
-        borderColor: '#eee'
-    },
-    saveBtn: {
-        backgroundColor: '#0a7ea4',
-        height: 55,
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 10
-    },
-    disabledBtn: {opacity: 0.7},
-    saveBtnText: {color: '#fff', fontWeight: 'bold', fontSize: 16},
-});

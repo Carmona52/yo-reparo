@@ -1,18 +1,33 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
     Modal,
-    StyleSheet,
     View,
     TextInput,
     TouchableOpacity,
     ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
-    Platform
+    Platform,
+    useColorScheme,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from "@/components/themed-text";
-import { supabase } from "@/libs/supabase";
+import {Ionicons} from '@expo/vector-icons';
+import {ThemedText} from "@/components/themed-text";
+import {supabase} from "@/libs/supabase";
+import {G, COLORS} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        cardBg: isDark ? COLORS.cardDark : COLORS.cardLight,
+        inputBg: isDark ? COLORS.inputDark : COLORS.inputLight,
+        borderColor: COLORS.border,
+        placeholderColor: COLORS.placeholder,
+    };
+};
 
 interface AddToolModalProps {
     visible: boolean;
@@ -21,7 +36,8 @@ interface AddToolModalProps {
     onSuccess: () => void;
 }
 
-export default function AddToolModal({ visible, onClose, workerId, onSuccess }: AddToolModalProps) {
+export default function AddToolModal({visible, onClose, workerId, onSuccess}: AddToolModalProps) {
+    const {textColor, cardBg, inputBg, borderColor, placeholderColor} = useAppTheme();
     const [toolName, setToolName] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -33,18 +49,16 @@ export default function AddToolModal({ visible, onClose, workerId, onSuccess }: 
 
         setLoading(true);
         try {
-            const { error } = await supabase
+            const {error} = await supabase
                 .from('herramientas')
                 .insert([
                     {
                         tool: toolName.trim(),
-                        estado:'prestada',
+                        estado: 'prestada',
                         worker_id: workerId
                     }
                 ]);
-
             if (error) throw error;
-
             Alert.alert("Éxito", "Herramienta asignada correctamente");
             setToolName('');
             onSuccess();
@@ -64,34 +78,44 @@ export default function AddToolModal({ visible, onClose, workerId, onSuccess }: 
             onRequestClose={onClose}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={styles.overlay}>
-                <View style={styles.modalContainer}>
-                    <View style={styles.header}>
-                        <ThemedText type="defaultSemiBold" style={styles.title}>Asignar Herramienta</ThemedText>
-                        <TouchableOpacity onPress={onClose}>
-                            <Ionicons name="close-circle" size={28} color="#ccc" />
+                style={G.modalOverlay}>
+                <View style={[G.modalCard, {backgroundColor: cardBg, borderColor, padding: 25, paddingBottom: 40}]}>
+                    <View style={G.modalHeaderInner}>
+                        <ThemedText type="defaultSemiBold" style={{fontSize: 20, color: textColor}}>
+                            Asignar Herramienta
+                        </ThemedText>
+                        <TouchableOpacity onPress={onClose} style={G.modalCloseBtn}>
+                            <Ionicons name="close-circle" size={28} color={placeholderColor}/>
                         </TouchableOpacity>
                     </View>
 
-                    <ThemedText style={styles.label}>Nombre de la herramienta</ThemedText>
+                    <ThemedText style={[G.infoLabel, {fontSize: 14, marginBottom: 8, marginLeft: 4}]}>
+                        Nombre de la herramienta
+                    </ThemedText>
                     <TextInput
-                        style={styles.input}
+                        style={[G.inputBordered, {
+                            color: textColor,
+                            backgroundColor: inputBg,
+                            borderColor,
+                            marginBottom: 25
+                        }]}
                         placeholder="Ej. Taladro Bosch, Multímetro..."
-                        placeholderTextColor="#999"
+                        placeholderTextColor={placeholderColor}
                         value={toolName}
                         onChangeText={setToolName}
-                        autoFocus={true}/>
+                        autoFocus={true}
+                    />
 
                     <TouchableOpacity
-                        style={[styles.saveBtn, loading && styles.disabledBtn]}
+                        style={[G.btnPrimary, loading && G.btnDisabled]}
                         onPress={handleSave}
                         disabled={loading}>
                         {loading ? (
-                            <ActivityIndicator color="#fff" />
+                            <ActivityIndicator color={COLORS.onPrimary}/>
                         ) : (
                             <>
-                                <Ionicons name="add-outline" size={20} color="#fff" />
-                                <ThemedText style={styles.saveBtnText}>Guardar Préstamo</ThemedText>
+                                <Ionicons name="add-outline" size={20} color={COLORS.onPrimary}/>
+                                <ThemedText style={G.btnText}>Guardar Préstamo</ThemedText>
                             </>
                         )}
                     </TouchableOpacity>
@@ -100,46 +124,3 @@ export default function AddToolModal({ visible, onClose, workerId, onSuccess }: 
         </Modal>
     );
 }
-
-const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContainer: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 25,
-        borderTopRightRadius: 25,
-        padding: 25,
-        paddingBottom: 40,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 25,
-    },
-    title: { fontSize: 20 },
-    label: { fontSize: 14, opacity: 0.6, marginBottom: 8, marginLeft: 4 },
-    input: {
-        backgroundColor: '#f5f5f5',
-        borderRadius: 12,
-        padding: 15,
-        fontSize: 16,
-        marginBottom: 25,
-        borderWidth: 1,
-        borderColor: '#eee',
-    },
-    saveBtn: {
-        backgroundColor: '#0a7ea4',
-        flexDirection: 'row',
-        height: 55,
-        borderRadius: 15,
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 10,
-    },
-    disabledBtn: { opacity: 0.7 },
-    saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-});

@@ -5,24 +5,37 @@ import {
     ScrollView,
     Alert,
     ActivityIndicator,
-    StyleSheet,
     TouchableOpacity,
     View,
     Platform,
-    Image
+    Image,
+    useColorScheme,
 } from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
-import {Buffer} from 'buffer';
-import { toTimestamp } from '@/utils/date';
+import {toTimestamp} from '@/utils/date';
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {createJob} from '@/libs/owner/jobs/create-jobs';
 import {getAllWorkers} from '@/libs/owner/workers/get-workers';
 import {Worker} from '@/libs/types/worker';
 import {supabase} from "@/libs/supabase";
-import {useThemeColor} from '@/hooks/use-theme-color';
+import {G, COLORS} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        inputBg: isDark ? COLORS.inputDark : COLORS.inputLight,
+        surfaceBg: isDark ? COLORS.surfaceMedium : COLORS.surfaceLight,
+        borderColor: COLORS.border,
+        placeholderColor: COLORS.placeholder,
+    };
+};
 
 interface InitialJobData {
     title?: string;
@@ -33,6 +46,7 @@ interface InitialJobData {
     fecha_preferida?: string;
     cotizacion_id?: string;
     costo?: number;
+    name_client?: string;
 }
 
 interface CreateJobModalProps {
@@ -43,6 +57,7 @@ interface CreateJobModalProps {
 }
 
 export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: CreateJobModalProps) => {
+    const {textColor, inputBg, surfaceBg, borderColor, placeholderColor} = useAppTheme();
     const [loading, setLoading] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [workers, setWorkers] = useState<Worker[]>([]);
@@ -59,20 +74,27 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
         fecha_cita: new Date(),
         cotizacion_id: undefined as string | undefined,
         price: '',
+        name_client: '',
     });
 
     useEffect(() => {
+        let isMounted = true;
         if (visible) {
             const fetchWorkers = async () => {
                 try {
                     const data = await getAllWorkers();
-                    setWorkers(Array.isArray(data) ? data : data.data || []);
+                    if (isMounted) {
+                        setWorkers(Array.isArray(data) ? data : data.data || []);
+                    }
                 } catch (error) {
                     console.error("Error al cargar trabajadores:", error);
                 }
             };
             fetchWorkers();
         }
+        return () => {
+            isMounted = false; // Cleanup para evitar actualizaciones en componentes desmontados
+        };
     }, [visible]);
 
     useEffect(() => {
@@ -85,7 +107,6 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
                         dateFromQuote = new Date(initialData.fecha_preferida.replace(' ', 'T'));
                     }
                 }
-
                 setForm({
                     title: initialData.title || '',
                     description: initialData.description || '',
@@ -95,6 +116,7 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
                     worker_id: null,
                     cotizacion_id: initialData.cotizacion_id,
                     price: initialData.costo ? initialData.costo.toString() : '',
+                    name_client: initialData.name_client || ''
                 });
             } else {
                 setForm({
@@ -106,11 +128,11 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
                     fecha_cita: new Date(),
                     cotizacion_id: undefined,
                     price: '',
+                    name_client: '',
                 });
             }
         }
     }, [visible, initialData]);
-
 
     const handlePickImage = async (useCamera: boolean) => {
         const permission = useCamera
@@ -122,28 +144,33 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
             return;
         }
 
+        // Eliminado base64: true para optimizar memoria
         const result = useCamera
-            ? await ImagePicker.launchCameraAsync({allowsEditing: true, aspect: [4, 3], quality: 0.5, base64: true})
+            ? await ImagePicker.launchCameraAsync({allowsEditing: true, aspect: [4, 3], quality: 0.5})
             : await ImagePicker.launchImageLibraryAsync({
                 allowsEditing: true,
                 aspect: [4, 3],
-                quality: 0.5,
-                base64: true
+                quality: 0.5
             });
 
-        if (!result.canceled && result.assets[0].base64) {
-            uploadImage(result.assets[0].base64);
+        if (!result.canceled && result.assets[0].uri) {
+            uploadImage(result.assets[0].uri);
         }
     };
 
-    const uploadImage = async (base64: string) => {
+    const uploadImage = async (uri: string) => {
         setUploadingImage(true);
         try {
             const fileName = `job_${Date.now()}.jpg`;
             const filePath = `uploads/${fileName}`;
+
+            // Convertimos la URI local en un Blob mediante fetch
+            const response = await fetch(uri);
+            const blob = await response.blob();
+
             const {error} = await supabase.storage
                 .from('jobs')
-                .upload(filePath, Buffer.from(base64, 'base64'), {contentType: 'image/jpeg'});
+                .upload(filePath, blob, {contentType: 'image/jpeg'});
 
             if (error) throw error;
             const {data: {publicUrl}} = supabase.storage.from('jobs').getPublicUrl(filePath);
@@ -159,12 +186,10 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
         if (!form.title || !form.address) {
             return Alert.alert("Campos incompletos", "Título y dirección son requeridos.");
         }
-
         setLoading(true);
         try {
             const {data: {user}} = await supabase.auth.getUser();
             if (!user) throw new Error("No hay sesión activa.");
-
             const dataToSave = {
                 title: form.title,
                 description: form.description,
@@ -176,8 +201,8 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
                 status: 'Pendiente',
                 cotizacion_id: form.cotizacion_id,
                 price: form.price ? parseFloat(form.price) : 0,
+                name_client: form.name_client,
             };
-
             await createJob(dataToSave);
             Alert.alert("¡Éxito!", "Trabajo guardado.");
             onSuccess();
@@ -207,120 +232,194 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
         }
     };
 
-    const textColor = useThemeColor({}, 'text');
-    const placeholderColor = "#888888aa";
     const assignedWorker = workers.find(w => w.id === form.worker_id);
 
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-            <ThemedView style={styles.container}>
-                <View style={styles.header}>
+            <ThemedView style={G.flex1}>
+                <View style={[G.modalHeader, {borderBottomColor: borderColor}]}>
                     <ThemedText type="title">Nuevo Trabajo</ThemedText>
                     <TouchableOpacity onPress={onClose} disabled={loading}>
-                        <Ionicons name="close-circle" size={32} color="#888"/>
+                        <Ionicons name="close-circle" size={32} color={placeholderColor}/>
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
-                    <ThemedText style={styles.label}>Foto de Evidencia</ThemedText>
-                    <View style={styles.imageContainer}>
-                        {form.image_url ? <Image source={{uri: form.image_url}} style={styles.imagePreview}/> :
-                            <Ionicons name="image-outline" size={40} color="#888"/>}
-                        {uploadingImage &&
-                            <View style={styles.loaderOverlay}><ActivityIndicator color="#0a7ea4"/></View>}
-                        <View style={styles.imageButtons}>
-                            <TouchableOpacity style={styles.actionBtn} onPress={() => handlePickImage(false)}><Ionicons
-                                name="images" size={16} color="#fff"/><ThemedText
-                                style={styles.actionBtnText}>Galería</ThemedText></TouchableOpacity>
-                            <TouchableOpacity style={styles.actionBtn} onPress={() => handlePickImage(true)}><Ionicons
-                                name="camera" size={16} color="#fff"/><ThemedText
-                                style={styles.actionBtnText}>Cámara</ThemedText></TouchableOpacity>
+                <ScrollView style={G.modalForm} showsVerticalScrollIndicator={false}>
+                    <ThemedText style={G.sectionLabel}>Foto de Evidencia</ThemedText>
+                    <View style={[G.imageContainer, {height: 180, marginBottom: 10}]}>
+                        {form.image_url ? (
+                            <Image source={{uri: form.image_url}} style={G.imageFull}/>
+                        ) : (
+                            <Ionicons name="image-outline" size={40} color={placeholderColor}/>
+                        )}
+                        {uploadingImage && (
+                            <View style={G.loaderOverlay}>
+                                <ActivityIndicator color={COLORS.primary}/>
+                            </View>
+                        )}
+                        <View style={[G.imageButtonsRow, {bottom: 10}]}>
+                            <TouchableOpacity style={G.imageActionBtn} onPress={() => handlePickImage(false)}>
+                                <Ionicons name="images" size={16} color={COLORS.onPrimary}/>
+                                <ThemedText style={G.imageActionBtnText}>Galería</ThemedText>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={G.imageActionBtn} onPress={() => handlePickImage(true)}>
+                                <Ionicons name="camera" size={16} color={COLORS.onPrimary}/>
+                                <ThemedText style={G.imageActionBtnText}>Cámara</ThemedText>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
-                    <ThemedText style={styles.label}>Programación</ThemedText>
-                    <View style={styles.dateTimeRow}>
-                        <TouchableOpacity style={styles.dateTimeBtn} onPress={() => setShowDatePicker(true)}>
-                            <Ionicons name="calendar-outline" size={18} color="#0a7ea4"/>
-                            <ThemedText
-                                style={styles.dateTimeText}>{form.fecha_cita.toLocaleDateString('es-MX')}</ThemedText>
+                    <ThemedText style={G.sectionLabel}>Programación</ThemedText>
+                    <View style={G.pickerRow}>
+                        <TouchableOpacity style={G.pickerBtn} onPress={() => setShowDatePicker(true)}>
+                            <Ionicons name="calendar-outline" size={18} color={COLORS.primary}/>
+                            <ThemedText style={G.pickerBtnText}>
+                                {form.fecha_cita.toLocaleDateString('es-MX')}
+                            </ThemedText>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.dateTimeBtn} onPress={() => setShowTimePicker(true)}>
-                            <Ionicons name="time-outline" size={18} color="#0a7ea4"/>
-                            <ThemedText style={styles.dateTimeText}>{form.fecha_cita.toLocaleTimeString('es-MX', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: true
-                            })}</ThemedText>
+                        <TouchableOpacity style={G.pickerBtn} onPress={() => setShowTimePicker(true)}>
+                            <Ionicons name="time-outline" size={18} color={COLORS.primary}/>
+                            <ThemedText style={G.pickerBtnText}>
+                                {form.fecha_cita.toLocaleTimeString('es-MX', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                })}
+                            </ThemedText>
                         </TouchableOpacity>
                     </View>
 
-                    {showDatePicker &&
-                        <DateTimePicker value={form.fecha_cita} mode="date" display="default" onChange={onChangeDate}
-                                        minimumDate={new Date()}/>}
-                    {showTimePicker &&
-                        <DateTimePicker value={form.fecha_cita} mode="time" is24Hour={false} display="default"
-                                        onChange={onChangeTime}/>}
+                    {showDatePicker && (
+                        <DateTimePicker
+                            value={form.fecha_cita}
+                            mode="date"
+                            display="default"
+                            onChange={onChangeDate}
+                            minimumDate={new Date()}
+                        />
+                    )}
+                    {showTimePicker && (
+                        <DateTimePicker
+                            value={form.fecha_cita}
+                            mode="time"
+                            is24Hour={false}
+                            display="default"
+                            onChange={onChangeTime}
+                        />
+                    )}
 
-                    <ThemedText style={styles.label}>Asignación</ThemedText>
-                    <View style={styles.assignmentBox}>
-                        <TouchableOpacity style={styles.dropdownTrigger}
-                                          onPress={() => setShowWorkerList(!showWorkerList)}>
-                            <View style={styles.workerInfoRow}>
+                    <ThemedText style={G.sectionLabel}>Asignación</ThemedText>
+                    <View style={[G.dropdownBox, {padding: 15}]}>
+                        <TouchableOpacity style={G.dropdownTrigger} onPress={() => setShowWorkerList(!showWorkerList)}>
+                            <View style={G.row}>
                                 <View
-                                    style={[styles.miniAvatar, {backgroundColor: assignedWorker ? '#0a7ea4' : '#ccc'}]}>
-                                    <ThemedText
-                                        style={styles.avatarLetter}>{assignedWorker?.name[0] || '?'}</ThemedText>
+                                    style={[G.avatarSm, {
+                                        width: 30,
+                                        height: 30,
+                                        borderRadius: 15,
+                                        backgroundColor: assignedWorker ? COLORS.primary : COLORS.surfaceStrong,
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        marginRight: 10
+                                    }]}
+                                >
+                                    <ThemedText style={{color: COLORS.onPrimary, fontWeight: 'bold'}}>
+                                        {assignedWorker?.name[0] || '?'}
+                                    </ThemedText>
                                 </View>
-                                <ThemedText
-                                    type="defaultSemiBold">{assignedWorker ? assignedWorker.name : "Seleccionar trabajador"}</ThemedText>
+                                <ThemedText type="defaultSemiBold">
+                                    {assignedWorker ? assignedWorker.name : "Seleccionar trabajador"}
+                                </ThemedText>
                             </View>
-                            <Ionicons name={showWorkerList ? "chevron-up" : "chevron-down"} size={20} color="#0a7ea4"/>
+                            <Ionicons name={showWorkerList ? "chevron-up" : "chevron-down"} size={20}
+                                      color={COLORS.primary}/>
                         </TouchableOpacity>
                         {showWorkerList && (
-                            <View style={styles.dropdownContent}>
+                            <View style={G.dropdownContent}>
                                 {workers.map(w => (
-                                    <TouchableOpacity key={w.id} style={styles.workerOption} onPress={() => {
-                                        setForm({...form, worker_id: w.id});
-                                        setShowWorkerList(false);
-                                    }}>
-                                        <ThemedText style={form.worker_id === w.id && {
-                                            color: '#0a7ea4',
-                                            fontWeight: 'bold'
-                                        }}>{w.name}</ThemedText>
+                                    <TouchableOpacity
+                                        key={w.id}
+                                        style={G.dropdownOption}
+                                        onPress={() => {
+                                            setForm({...form, worker_id: w.id});
+                                            setShowWorkerList(false);
+                                        }}
+                                    >
+                                        <ThemedText style={form.worker_id === w.id && G.dropdownOptionActive}>
+                                            {w.name}
+                                        </ThemedText>
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         )}
                     </View>
 
-                    <ThemedText style={styles.label}>Datos del Servicio</ThemedText>
-                    <TextInput style={[styles.input, {color: textColor}]} placeholder="Título"
-                               placeholderTextColor={placeholderColor} value={form.title}
-                               onChangeText={t => setForm(p => ({...p, title: t}))}/>
-
-                    <ThemedText style={styles.label}>Presupuesto ($)</ThemedText>
+                    <ThemedText style={G.sectionLabel}>Datos del Servicio</ThemedText>
                     <TextInput
-                        style={[styles.input, {color: textColor}]}
+                        style={[G.inputBordered, {color: textColor, backgroundColor: inputBg, borderColor}]}
+                        placeholder="Título"
+                        placeholderTextColor={placeholderColor}
+                        value={form.title}
+                        onChangeText={t => setForm(p => ({...p, title: t}))}
+                    />
+
+                    <ThemedText style={G.sectionLabel}>Presupuesto ($)</ThemedText>
+                    <TextInput
+                        style={[G.inputBordered, {color: textColor, backgroundColor: inputBg, borderColor}]}
                         placeholder="0.00"
                         placeholderTextColor={placeholderColor}
                         keyboardType="numeric"
                         value={form.price}
-                        onChangeText={t => setForm(p => ({...p, price: t.replace(/[^0-9.]/g, '')}))}
+                        // Solo permite números y 1 solo punto decimal
+                        onChangeText={t => setForm(p => ({
+                            ...p,
+                            price: t.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
+                        }))}
                     />
 
-                    <TextInput style={[styles.input, {color: textColor, marginTop: 15}]} placeholder="Dirección"
-                               placeholderTextColor={placeholderColor} value={form.address}
-                               onChangeText={t => setForm(p => ({...p, address: t}))}/>
+                    <TextInput
+                        style={[G.inputBordered, {
+                            color: textColor,
+                            backgroundColor: inputBg,
+                            borderColor,
+                            marginTop: 15
+                        }]}
+                        placeholder="Dirección"
+                        placeholderTextColor={placeholderColor}
+                        value={form.address}
+                        onChangeText={t => setForm(p => ({...p, address: t}))}
+                    />
 
-                    <TextInput style={[styles.input, styles.textArea, {color: textColor, marginTop: 15}]} multiline
-                               placeholder="Descripción detallada..." placeholderTextColor={placeholderColor}
-                               value={form.description} onChangeText={t => setForm(p => ({...p, description: t}))}/>
+                    <TextInput
+                        style={[G.inputBordered, {
+                            color: textColor,
+                            backgroundColor: inputBg,
+                            borderColor,
+                            marginTop: 15
+                        }]}
+                        placeholder="Nombre del Cliente"
+                        placeholderTextColor={placeholderColor}
+                        value={form.name_client}
+                        onChangeText={t => setForm(p => ({...p, name_client: t}))}
+                    />
 
-                    <TouchableOpacity style={[styles.saveBtn, loading && styles.btnDisabled]} onPress={handleSave}
-                                      disabled={loading}>
-                        {loading ? <ActivityIndicator color="#fff"/> :
-                            <ThemedText style={styles.saveBtnText}>Confirmar Trabajo</ThemedText>}
+                    <TextInput
+                        style={[G.textArea, {color: textColor, backgroundColor: inputBg, borderColor, marginTop: 15}]}
+                        multiline
+                        placeholder="Descripción detallada..."
+                        placeholderTextColor={placeholderColor}
+                        value={form.description}
+                        onChangeText={t => setForm(p => ({...p, description: t}))}
+                    />
+
+                    <TouchableOpacity
+                        style={[G.btnPrimary, loading && G.btnDisabled, {marginTop: 30}]}
+                        onPress={handleSave}
+                        disabled={loading}
+                    >
+                        {loading ? <ActivityIndicator color={COLORS.onPrimary}/> : (
+                            <ThemedText style={G.btnText}>Confirmar Trabajo</ThemedText>
+                        )}
                     </TouchableOpacity>
 
                     <View style={{height: 60}}/>
@@ -329,77 +428,3 @@ export const CreateJobModal = ({visible, onClose, onSuccess, initialData}: Creat
         </Modal>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {flex: 1},
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(150,150,150,0.1)'
-    },
-    form: {padding: 20},
-    label: {fontSize: 12, fontWeight: 'bold', marginBottom: 8, marginTop: 20, textTransform: 'uppercase', opacity: 0.6},
-    input: {backgroundColor: 'rgba(150,150,150,0.1)', borderRadius: 12, padding: 15, fontSize: 16},
-    textArea: {height: 100, textAlignVertical: 'top'},
-    imageContainer: {
-        height: 180,
-        backgroundColor: 'rgba(150,150,150,0.05)',
-        borderRadius: 12,
-        overflow: 'hidden',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(150,150,150,0.1)'
-    },
-    imagePreview: {width: '100%', height: '100%'},
-    imageButtons: {position: 'absolute', bottom: 10, flexDirection: 'row', gap: 10},
-    actionBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#0a7ea4',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 20,
-        gap: 5
-    },
-    actionBtnText: {color: '#fff', fontSize: 11, fontWeight: 'bold'},
-    loaderOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(255,255,255,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    dateTimeRow: {flexDirection: 'row', gap: 10},
-    dateTimeBtn: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(10, 126, 164, 0.05)',
-        padding: 15,
-        borderRadius: 12,
-        gap: 8,
-        borderWidth: 1,
-        borderColor: 'rgba(10, 126, 164, 0.1)'
-    },
-    dateTimeText: {color: '#0a7ea4', fontWeight: '600'},
-    assignmentBox: {
-        backgroundColor: 'rgba(150, 150, 150, 0.05)',
-        padding: 15,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(150, 150, 150, 0.1)'
-    },
-    dropdownTrigger: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-    workerInfoRow: {flexDirection: 'row', alignItems: 'center', gap: 10},
-    miniAvatar: {width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center'},
-    avatarLetter: {color: '#fff', fontWeight: 'bold'},
-    dropdownContent: {marginTop: 10, borderTopWidth: 1, borderColor: 'rgba(150,150,150,0.1)'},
-    workerOption: {paddingVertical: 12},
-    saveBtn: {backgroundColor: '#0a7ea4', padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center'},
-    saveBtnText: {color: '#fff', fontWeight: 'bold', fontSize: 16},
-    btnDisabled: {opacity: 0.5}
-});

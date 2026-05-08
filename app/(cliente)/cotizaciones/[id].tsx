@@ -1,7 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {
     View,
-    StyleSheet,
     ActivityIndicator,
     Alert,
     TouchableOpacity,
@@ -9,7 +8,7 @@ import {
     ScrollView,
     Image,
     Modal,
-    Platform,
+    useColorScheme,
 } from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
@@ -20,10 +19,26 @@ import {cotizacionesService} from "@/libs/users/get-cotizacioes";
 import {Cotizacion} from "@/libs/types/cotizaciones";
 import {supabase} from "@/libs/supabase";
 import {ApelacionModal} from "@/components/cotizaciones/apelacion-modal";
+import {G, COLORS, shadow} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        cardBg: isDark ? COLORS.cardDark : COLORS.cardLight,
+        surfaceBg: isDark ? COLORS.surfaceMedium : COLORS.surfaceLight,
+        borderColor: COLORS.border,
+        inputBg: isDark ? COLORS.inputDark : COLORS.inputLight,
+    };
+};
 
 export default function QuoteDetailScreen() {
     const {id} = useLocalSearchParams();
     const router = useRouter();
+    const {isDark, textColor, mutedText, cardBg, surfaceBg, borderColor} = useAppTheme();
     const [quote, setQuote] = useState<Cotizacion | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
@@ -68,8 +83,8 @@ export default function QuoteDetailScreen() {
     const getStatusColor = (status: string) => {
         const s = status?.toLowerCase() || '';
         if (s.includes('pendiente')) return '#FF9500';
-        if (s.includes('enviada') || s.includes('proceso')) return '#007AFF';
-        if (s.includes('aceptada') || s.includes('terminado')) return '#34C759';
+        if (s.includes('enviada') || s.includes('proceso')) return COLORS.primary;
+        if (s.includes('aceptada') || s.includes('terminado')) return COLORS.success;
         return '#FF3B30';
     };
 
@@ -92,7 +107,6 @@ export default function QuoteDetailScreen() {
                         setActionLoading(true);
                         try {
                             await cotizacionesService.updateStatus(id as string, status);
-
                             const {error: funcError} = await supabase.functions.invoke('send-to-admins', {
                                 body: {
                                     role: 'owner',
@@ -102,7 +116,6 @@ export default function QuoteDetailScreen() {
                                 }
                             });
                             if (funcError) console.error('Error enviando notificación:', funcError);
-
                             await loadQuote();
                             router.back();
                         } catch (e) {
@@ -129,7 +142,6 @@ export default function QuoteDetailScreen() {
                         setActionLoading(true);
                         try {
                             await cotizacionesService.updateStatus(id as string, 'Cancelada');
-
                             const {error: funcError} = await supabase.functions.invoke('send-to-admins', {
                                 body: {
                                     role: 'owner',
@@ -139,7 +151,6 @@ export default function QuoteDetailScreen() {
                                 }
                             });
                             if (funcError) console.error('Error enviando notificación:', funcError);
-
                             await loadQuote();
                             router.back();
                         } catch (e) {
@@ -154,13 +165,13 @@ export default function QuoteDetailScreen() {
     };
 
     if (loading) return (
-        <ThemedView style={styles.center}>
-            <ActivityIndicator size="large" color="#007AFF"/>
+        <ThemedView style={G.center}>
+            <ActivityIndicator size="large" color={COLORS.primary}/>
         </ThemedView>
     );
 
     if (!quote) return (
-        <ThemedView style={styles.center}>
+        <ThemedView style={G.center}>
             <ThemedText>No se encontró información.</ThemedText>
         </ThemedView>
     );
@@ -171,122 +182,159 @@ export default function QuoteDetailScreen() {
     const canDelete = !isAcceptedOrFinished;
 
     return (
-        <ThemedView style={styles.container}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-
-                {/* ── Header ── */}
-                <View style={styles.header}>
-                    <View style={styles.headerTopRow}>
-                        <View style={[styles.statusBadge, {backgroundColor: `${getStatusColor(quote.estado)}15`}]}>
-                            <View style={[styles.statusDot, {backgroundColor: getStatusColor(quote.estado)}]}/>
-                            <ThemedText style={[styles.statusText, {color: getStatusColor(quote.estado)}]}>
+        <ThemedView style={G.flex1}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[G.scrollContent, {padding: 25}]}>
+                {/* Header */}
+                <View style={{marginBottom: 25}}>
+                    <View style={[G.rowBetween, {marginBottom: 12}]}>
+                        <View style={[G.statusRow, G.badgeLg, {backgroundColor: `${getStatusColor(quote.estado)}15`}]}>
+                            <View style={[G.statusDot, {backgroundColor: getStatusColor(quote.estado)}]}/>
+                            <ThemedText style={[G.badgeText, {color: getStatusColor(quote.estado)}]}>
                                 {quote.estado.toUpperCase()}
                             </ThemedText>
                         </View>
-
                         {canDelete && (
-                            <TouchableOpacity
-                                style={styles.deleteButton}
-                                onPress={handleDelete}
-                                disabled={actionLoading}
-                            >
+                            <TouchableOpacity style={[G.iconBadgeSm, {backgroundColor: 'rgba(255,59,48,0.1)'}]}
+                                              onPress={handleDelete} disabled={actionLoading}>
                                 <Ionicons name="trash-outline" size={20} color="#FF3B30"/>
                             </TouchableOpacity>
                         )}
                     </View>
 
-                    <ThemedText type="title" style={styles.mainTitle}>{quote.servicio}</ThemedText>
-                    <ThemedText style={styles.quoteId}>
+                    <ThemedText type="title" style={[G.pageTitle, {
+                        fontSize: 28,
+                        lineHeight: 34,
+                        marginBottom: 4,
+                        color: textColor
+                    }]}>
+                        {quote.servicio}
+                    </ThemedText>
+                    <ThemedText style={[G.infoValueSm, {color: mutedText, letterSpacing: 1}]}>
                         Ticket #{id?.toString().slice(-6).toUpperCase()}
                     </ThemedText>
                 </View>
 
-                {/* ── Info card ── */}
-                <ThemedView style={styles.infoCard}>
+                <View style={[G.card, {backgroundColor: cardBg, borderColor, marginBottom: 30}, shadow.sm]}>
                     <DetailRow icon="location-sharp" label="Dirección" value={quote.direccion || 'Sin dirección'}/>
-                    <View style={styles.separator}/>
+                    <View style={G.dividerH}/>
                     <DetailRow icon="time" label="Programado" value={formatDateTime(quote.fecha_preferida)}/>
-                </ThemedView>
+                </View>
 
-                {/* ── Descripción ── */}
-                <View style={styles.section}>
-                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                <View style={{marginBottom: 30}}>
+                    <ThemedText type="defaultSemiBold" style={[G.sectionTitle, {marginBottom: 12, color: textColor}]}>
                         Descripción del problema
                     </ThemedText>
-                    <View style={styles.descContainer}>
-                        <ThemedText style={styles.descText}>{quote.descripcion}</ThemedText>
+                    <View style={[G.cardSurface, {borderLeftWidth: 4, borderLeftColor: COLORS.primary, padding: 16}]}>
+                        <ThemedText style={[G.infoValue, {lineHeight: 24, opacity: 0.8, color: mutedText}]}>
+                            {quote.descripcion}
+                        </ThemedText>
                     </View>
                 </View>
 
-                {/* ── Evidencia ── */}
+                {/* Evidencia */}
                 {quote.evidencia_url && (
-                    <View style={styles.section}>
-                        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                    <View style={{marginBottom: 30}}>
+                        <ThemedText type="defaultSemiBold"
+                                    style={[G.sectionTitle, {marginBottom: 12, color: textColor}]}>
                             Evidencia visual
                         </ThemedText>
                         <TouchableOpacity
                             activeOpacity={0.9}
                             onPress={() => setImageZoomVisible(true)}
-                            style={styles.imageCard}
+                            style={[G.imageContainer, {height: 200}]}
                         >
-                            <Image source={{uri: quote.evidencia_url}} style={styles.evidenceImage}/>
-                            <View style={styles.zoomBadge}>
+                            <Image source={{uri: quote.evidencia_url}} style={G.imageFull}/>
+                            <View style={[{
+                                position: 'absolute',
+                                bottom: 15,
+                                right: 15,
+                                backgroundColor: 'rgba(0,0,0,0.5)',
+                                padding: 8,
+                                borderRadius: 12
+                            }]}>
                                 <Ionicons name="expand" size={18} color="#FFF"/>
                             </View>
                         </TouchableOpacity>
                     </View>
                 )}
 
-                {/* ── PDF ── */}
+                {quote.estado === 'Pendiente' && !actionLoading && (
+                    <View style={[G.row, {gap: 12, marginTop: 1}]}>
+                        <ThemedText style={[G.infoValueSm, {color: mutedText, letterSpacing: 1, fontSize: 12}]}>Ya hemos recibido tu solicitud, por favor, espera a que te enviemos tu cotización</ThemedText>
+                    </View>
+                )}
+
                 {quote.pdf_url && (
                     <TouchableOpacity
-                        style={styles.pdfButton}
+                        style={[G.card, {
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: 'rgba(255,59,48,0.05)',
+                            borderColor: 'rgba(255,59,48,0.1)',
+                            marginBottom: 30
+                        }]}
                         onPress={() => Linking.openURL(quote.pdf_url!)}
                     >
-                        <View style={styles.pdfIconContainer}>
+                        <View style={[G.iconBadgeLg, {backgroundColor: 'rgba(255,255,255,0.15)'}]}>
                             <Ionicons name="document-text" size={24} color="#FF3B30"/>
                         </View>
                         <View style={{flex: 1, marginLeft: 12}}>
                             <ThemedText type="defaultSemiBold">Presupuesto formal.pdf</ThemedText>
-                            <ThemedText style={styles.pdfSubtext}>Toca para descargar y revisar</ThemedText>
+                            <ThemedText style={[G.infoValueSm, {color: mutedText, marginTop: 2}]}>Toca para descargar y
+                                revisar</ThemedText>
                         </View>
-                        <Ionicons name="download-outline" size={20} color="#8E8E93"/>
+                        <Ionicons name="download-outline" size={20} color={mutedText}/>
                     </TouchableOpacity>
                 )}
 
-
+                {/* Acciones principal (Aceptar/Rechazar) */}
                 {quote.estado === 'Enviada' && !actionLoading && (
-                    <View style={styles.footerActions}>
+                    <View style={[G.row, {gap: 12, marginTop: 24}]}>
                         <TouchableOpacity
-                            style={styles.rejectButton}
+                            style={[G.btnDanger, {flex: 1, padding: 20}]}
                             onPress={() => handleDecision('Rechazada')}
                         >
-                            <ThemedText style={styles.rejectText}>Rechazar</ThemedText>
+                            <ThemedText style={G.btnTextDanger}>Rechazar</ThemedText>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={styles.acceptButton}
+                            style={[G.btnPrimary, {flex: 2, padding: 20}]}
                             onPress={() => handleDecision('Aceptada')}
                         >
-                            <ThemedText style={styles.acceptText}>Aceptar</ThemedText>
+                            <ThemedText style={G.btnText}>Aceptar</ThemedText>
                         </TouchableOpacity>
                     </View>
                 )}
+
+                {/* Botón apelación */}
                 {quote.estado === 'Enviada' && quote.costo_estimado && (
                     <TouchableOpacity
                         style={[
-                            styles.apelarBtn,
-                            quote.apelacion_estado === 'cerrada_sin_acuerdo' && styles.apelarBtnCerrado,
+                            G.btnOutlinePrimary,
+                            {
+                                marginTop: 16,
+                                borderStyle: 'solid',
+                                backgroundColor: 'rgba(21,101,192,0.08)',
+                                borderColor: 'rgba(21,101,192,0.2)'
+                            },
+                            quote.apelacion_estado === 'cerrada_sin_acuerdo' && {
+                                backgroundColor: 'rgba(142,142,147,0.08)',
+                                borderColor: 'rgba(142,142,147,0.2)'
+                            }
                         ]}
                         onPress={() => setShowApelacion(true)}
                     >
                         <Ionicons
                             name={quote.apelacion_estado === 'activa' ? 'chatbubbles' : 'chatbubbles-outline'}
                             size={18}
-                            color={quote.apelacion_estado === 'cerrada_sin_acuerdo' ? '#8E8E93' : '#1565C0'}
+                            color={quote.apelacion_estado === 'cerrada_sin_acuerdo' ? mutedText : '#1565C0'}
                         />
                         <ThemedText style={[
-                            styles.apelarBtnText,
-                            quote.apelacion_estado === 'cerrada_sin_acuerdo' && styles.apelarBtnTextCerrado,
+                            {
+                                color: quote.apelacion_estado === 'cerrada_sin_acuerdo' ? mutedText : '#1565C0',
+                                fontWeight: '700',
+                                fontSize: 15
+                            },
+                            quote.apelacion_estado === 'cerrada_sin_acuerdo' && {color: mutedText}
                         ]}>
                             {quote.apelacion_estado === 'activa'
                                 ? 'Apelación en curso'
@@ -299,22 +347,18 @@ export default function QuoteDetailScreen() {
                     </TouchableOpacity>
                 )}
 
-
-
-                {actionLoading && <ActivityIndicator color="#007AFF" style={{marginTop: 30}}/>}
+                {actionLoading && <ActivityIndicator color={COLORS.primary} style={{marginTop: 30}}/>}
                 <View style={{height: 40}}/>
             </ScrollView>
 
             <Modal visible={isImageZoomVisible} transparent={true} animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <TouchableOpacity style={styles.closeBtn} onPress={() => setImageZoomVisible(false)}>
+                <View style={[G.modalOverlay, {backgroundColor: '#000', justifyContent: 'center'}]}>
+                    <TouchableOpacity style={[G.closeModalBtn, {top: 50, right: 25}]}
+                                      onPress={() => setImageZoomVisible(false)}>
                         <Ionicons name="close" size={30} color="#FFF"/>
                     </TouchableOpacity>
-                    <Image
-                        source={{uri: quote.evidencia_url || ''}}
-                        style={styles.fullImage}
-                        resizeMode="contain"
-                    />
+                    <Image source={{uri: quote.evidencia_url || ''}} style={{width: '100%', height: '80%'}}
+                           resizeMode="contain"/>
                 </View>
             </Modal>
 
@@ -340,124 +384,16 @@ export default function QuoteDetailScreen() {
 }
 
 function DetailRow({icon, label, value}: { icon: any; label: string; value: string }) {
+    const {mutedText, textColor} = useAppTheme();
     return (
-        <View style={styles.detailRow}>
-            <View style={styles.detailIconBg}>
-                <Ionicons name={icon} size={18} color="#007AFF"/>
+        <View style={G.infoRow}>
+            <View style={[G.iconBadgeSm, {backgroundColor: COLORS.primaryBgMedium}]}>
+                <Ionicons name={icon} size={18} color={COLORS.primary}/>
             </View>
-            <View style={{flex: 1, marginLeft: 12}}>
-                <ThemedText style={styles.detailLabel}>{label}</ThemedText>
-                <ThemedText type="defaultSemiBold" style={styles.detailValue}>{value}</ThemedText>
+            <View style={G.infoTextGroup}>
+                <ThemedText style={G.infoLabel}>{label}</ThemedText>
+                <ThemedText type="defaultSemiBold" style={[G.infoValue, {color: textColor}]}>{value}</ThemedText>
             </View>
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {flex: 1},
-    center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
-    scrollContent: {padding: 25},
-
-    header: {marginBottom: 25},
-    headerTopRow: {
-        flexDirection: 'row', justifyContent: 'space-between',
-        alignItems: 'center', marginBottom: 12,
-    },
-    statusBadge: {
-        flexDirection: 'row', alignItems: 'center',
-        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12,
-    },
-    statusDot: {width: 6, height: 6, borderRadius: 3, marginRight: 8},
-    statusText: {fontSize: 11, fontWeight: '900', letterSpacing: 0.5},
-    deleteButton: {padding: 8, backgroundColor: 'rgba(255,59,48,0.1)', borderRadius: 12},
-    mainTitle: {fontSize: 28, fontWeight: '800', lineHeight: 34},
-    quoteId: {fontSize: 13, opacity: 0.4, marginTop: 4, letterSpacing: 1},
-
-    infoCard: {
-        borderRadius: 24, padding: 20, marginBottom: 30,
-        borderWidth: 1, borderColor: 'rgba(150,150,150,0.1)',
-        ...Platform.select({
-            ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.05, shadowRadius: 10},
-            android: {elevation: 2},
-        }),
-    },
-    detailRow: {flexDirection: 'row', alignItems: 'center'},
-    detailIconBg: {
-        width: 36, height: 36, borderRadius: 10,
-        backgroundColor: 'rgba(0,122,255,0.1)',
-        justifyContent: 'center', alignItems: 'center',
-    },
-    detailLabel: {fontSize: 11, opacity: 0.5, textTransform: 'uppercase'},
-    detailValue: {fontSize: 15, marginTop: 1},
-    separator: {height: 1, backgroundColor: 'rgba(150,150,150,0.1)', marginVertical: 15},
-
-    section: {marginBottom: 30},
-    sectionTitle: {fontSize: 16, marginBottom: 12},
-    descContainer: {
-        backgroundColor: 'rgba(150,150,150,0.05)',
-        padding: 16, borderRadius: 16,
-        borderLeftWidth: 4, borderLeftColor: '#007AFF',
-    },
-    descText: {fontSize: 15, lineHeight: 24, opacity: 0.8},
-
-    imageCard: {borderRadius: 20, overflow: 'hidden', height: 200, backgroundColor: 'rgba(150,150,150,0.1)'},
-    evidenceImage: {width: '100%', height: '100%'},
-    zoomBadge: {
-        position: 'absolute', bottom: 15, right: 15,
-        backgroundColor: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 12,
-    },
-
-    pdfButton: {
-        flexDirection: 'row', alignItems: 'center',
-        backgroundColor: 'rgba(255,59,48,0.05)',
-        padding: 16, borderRadius: 20,
-        borderWidth: 1, borderColor: 'rgba(255,59,48,0.1)',
-        marginBottom: 30,
-    },
-    pdfIconContainer: {
-        width: 48, height: 48, borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        justifyContent: 'center', alignItems: 'center',
-    },
-    pdfSubtext: {fontSize: 12, opacity: 0.5, marginTop: 2},
-
-    priceContainer: {
-        alignItems: 'center', paddingVertical: 20,
-        backgroundColor: 'rgba(0,122,255,0.08)',
-        borderRadius: 24, borderStyle: 'dashed',
-        borderWidth: 1, borderColor: '#007AFF',
-    },
-    priceLabel: {fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1},
-    priceValue: {fontSize: 32, fontWeight: '900', color: '#007AFF', marginTop: 5},
-
-    apelarBtn: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: 8, padding: 16, borderRadius: 14, marginTop: 16,
-        backgroundColor: 'rgba(21,101,192,0.08)',
-        borderWidth: 1, borderColor: 'rgba(21,101,192,0.2)',
-    },
-    apelarBtnCerrado: {
-        backgroundColor: 'rgba(142,142,147,0.08)',
-        borderColor: 'rgba(142,142,147,0.2)',
-    },
-    apelarBtnText: {color: '#1565C0', fontWeight: '700', fontSize: 15},
-    apelarBtnTextCerrado: {color: '#8E8E93'},
-
-    footerActions: {flexDirection: 'row', gap: 12, marginTop: 24},
-    rejectButton: {
-        flex: 1, padding: 20, borderRadius: 18,
-        alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'rgba(255,59,48,0.1)',
-    },
-    rejectText: {color: '#FF3B30', fontWeight: '700'},
-    acceptButton: {
-        flex: 2, padding: 20, borderRadius: 18,
-        alignItems: 'center', justifyContent: 'center',
-        backgroundColor: '#007AFF',
-    },
-    acceptText: {color: '#FFF', fontWeight: '700', fontSize: 16},
-
-    modalOverlay: {flex: 1, backgroundColor: '#000', justifyContent: 'center'},
-    closeBtn: {position: 'absolute', top: 50, right: 25, zIndex: 10, padding: 10},
-    fullImage: {width: '100%', height: '80%'},
-});

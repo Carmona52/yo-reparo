@@ -78,7 +78,8 @@ export default function JobsScreen() {
         return jobs.filter(job => {
             const matchesSearch =
                 job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                job.address.toLowerCase().includes(searchQuery.toLowerCase());
+                job.address.toLowerCase().includes(searchQuery.toLowerCase())||
+                job.profiles?.name.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesStatus =
                 selectedStatus === 'Todos' ||
                 job.status?.toLowerCase() === selectedStatus.toLowerCase();
@@ -106,7 +107,7 @@ export default function JobsScreen() {
                 pathname: "/jobs/[id]",
                 params: { id: item.id }
             } as any)}>
-            <View style={[G.card, { backgroundColor: cardBg, borderColor: borderColor }, shadow.sm]}>
+            <View style={[G.card, { backgroundColor: cardBg, borderColor: borderColor, marginBottom:8 }, shadow.sm]}>
                 <View style={[G.rowBetween, { marginBottom: 12 }]}>
                     <ThemedText type="defaultSemiBold" style={[G.infoValue, { flex: 1, marginRight: 10, color: textColor }]} numberOfLines={1}>
                         {item.title}
@@ -119,9 +120,14 @@ export default function JobsScreen() {
                 <View style={[G.row, { gap: 6, marginBottom: 15 }]}>
                     <Ionicons name="person-sharp" size={14} color={mutedText} />
                     <ThemedText style={[G.infoValueSm, { flex: 1, color: mutedText }]} numberOfLines={1}>
-                        {item.profiles?.name}
+                        {
+                            item.name_client && item.name_client.length > 0
+                                ? item.name_client
+                                : item.profiles?.name
+                        }
                     </ThemedText>
-                </View><View style={[G.row, { gap: 6, marginBottom: 15 }]}>
+                </View>
+                <View style={[G.row, { gap: 6, marginBottom: 15 }]}>
                     <Ionicons name="location-outline" size={14} color={mutedText} />
                     <ThemedText style={[G.infoValueSm, { flex: 1, color: mutedText }]} numberOfLines={1}>
                         {item.address}

@@ -48,6 +48,10 @@ export default function Index() {
             case 'supervisor':
                 router.replace('/(owner)');
                 break;
+
+            case 'administrador':
+                router.replace('/(owner)');
+                break;
             default:
                 router.replace('/(auth)/login');
                 break;

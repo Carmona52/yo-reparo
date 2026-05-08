@@ -11,6 +11,8 @@ export interface Job {
     created_at: string;
     fecha_cita: string;
     image_url?:string;
+    price: number;
+    name_client?: string;
     profiles?:{
         name: string;
     }

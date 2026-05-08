@@ -1,15 +1,14 @@
 import {useState, useEffect} from 'react';
 import {
     View,
-    StyleSheet,
     ScrollView,
     TouchableOpacity,
     Alert,
     ActivityIndicator,
     Linking,
     Image,
-    Platform,
-    Modal
+    Modal,
+    useColorScheme,
 } from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
@@ -22,10 +21,25 @@ import {ThemedText} from "@/components/themed-text";
 import {updateJob} from '@/libs/owner/jobs/update-jobs';
 import {Job} from "@/libs/types/job";
 import {supabase} from "@/libs/supabase";
+import {G, COLORS, shadow} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        cardBg: isDark ? COLORS.cardDark : COLORS.cardLight,
+        surfaceBg: isDark ? COLORS.surfaceMedium : COLORS.surfaceLight,
+        borderColor: COLORS.border,
+    };
+};
 
 export default function JobDetailScreen() {
     const {id} = useLocalSearchParams();
     const router = useRouter();
+    const {textColor, mutedText, surfaceBg} = useAppTheme();
 
     const [job, setJob] = useState<Job | null>(null);
     const [loading, setLoading] = useState(true);
@@ -70,15 +84,11 @@ export default function JobDetailScreen() {
             const {error: notifError} = await supabase.functions.invoke('send-to-admins', {
                 body: {
                     role: 'owner',
-                    title: isStarting
-                        ? '🛠️ Trabajo iniciado'
-                        : '✅ Trabajo finalizado',
+                    title: isStarting ? '🛠️ Trabajo iniciado' : '✅ Trabajo finalizado',
                     body: isStarting
                         ? `${workerName} ha comenzado: ${job?.title}`
                         : `${workerName} ha completado: ${job?.title}`,
-                    data: {
-                        screen: `jobs/${job?.id}`,
-                    },
+                    data: {screen: `jobs/${job?.id}`},
                 },
             });
 
@@ -90,7 +100,6 @@ export default function JobDetailScreen() {
                     ? "El trabajo ha sido marcado como iniciado."
                     : "El trabajo ha sido marcado como finalizado."
             );
-
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : "No se pudo actualizar el estado.";
             Alert.alert("Error", msg);
@@ -101,9 +110,7 @@ export default function JobDetailScreen() {
 
     const confirmAction = () => {
         if (!job) return;
-
         const isPending = job.status.toLowerCase() === 'pendiente';
-
         if (isPending) {
             Alert.alert(
                 "Iniciar Servicio",
@@ -126,8 +133,8 @@ export default function JobDetailScreen() {
     };
 
     const getStatusColor = (status: string) => {
-        const colors = {'finalizado': '#10b981', 'en proceso': '#0a7ea4', 'pendiente': '#f59e0b'};
-        return colors[status.toLowerCase() as keyof typeof colors] || '#666';
+        const colors = {'finalizado': COLORS.success, 'en proceso': COLORS.primary, 'pendiente': '#f59e0b'};
+        return colors[status.toLowerCase() as keyof typeof colors] || mutedText;
     };
 
     const formatDate = (dateStr?: string) => {
@@ -139,102 +146,117 @@ export default function JobDetailScreen() {
         };
     };
 
-    if (loading) return <ThemedView style={styles.center}><ActivityIndicator size="large"
-                                                                             color="#0a7ea4"/></ThemedView>;
-    if (!job) return <ThemedView style={styles.center}><ThemedText>Servicio no encontrado</ThemedText></ThemedView>;
+    if (loading) return <ThemedView style={G.center}><ActivityIndicator size="large"
+                                                                        color={COLORS.primary}/></ThemedView>;
+    if (!job) return <ThemedView style={G.center}><ThemedText>Servicio no encontrado</ThemedText></ThemedView>;
 
     const isFinished = job.status.toLowerCase() === 'finalizado';
     const isInProgress = job.status.toLowerCase() === 'en proceso';
     const dateInfo = formatDate(job.fecha_cita);
 
     return (
-        <ThemedView style={{flex: 1}}>
-            <SafeAreaView style={{flex: 1}} edges={['top']}>
-                <View style={styles.topBar}>
-                    <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                        <Ionicons name="chevron-back" size={24} color="#333"/>
+        <ThemedView style={G.flex1}>
+            <SafeAreaView style={G.flex1} edges={['top']}>
+                {/* Top bar con botón de regreso y badge */}
+                <View style={[G.topBar, {justifyContent: 'space-between'}]}>
+                    <TouchableOpacity style={G.backBtn} onPress={() => router.back()}>
+                        <Ionicons name="chevron-back" size={24} color={textColor}/>
                     </TouchableOpacity>
-                    <View style={[styles.badge, {backgroundColor: getStatusColor(job.status)}]}>
-                        <ThemedText style={styles.badgeText}>{job.status}</ThemedText>
+                    <View style={[G.badge, {backgroundColor: getStatusColor(job.status)}]}>
+                        <ThemedText style={G.badgeTextWhite}>{job.status}</ThemedText>
                     </View>
                 </View>
 
-                <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-                    <View style={styles.headerSection}>
-                        <ThemedText type="title" style={styles.title}>{job.title}</ThemedText>
+                <ScrollView contentContainerStyle={G.scrollContent} showsVerticalScrollIndicator={false}>
+                    {/* Título e imagen */}
+                    <View style={{marginBottom: 25}}>
+                        <ThemedText type="title" style={[G.pageTitle, {marginBottom: 15, color: textColor}]}>
+                            {job.title}
+                        </ThemedText>
                         <TouchableOpacity
-                            style={styles.mainImageWrapper}
+                            style={[G.imageContainerLg, {height: 220, borderRadius: 24, ...shadow.md}]}
                             onPress={() => job.image_url && setImageViewerVisible(true)}
                             disabled={!job.image_url}
                             activeOpacity={0.9}>
                             {job.image_url ? (
-                                <Image source={{uri: job.image_url}} style={styles.jobImage}/>
+                                <Image source={{uri: job.image_url}} style={G.imageFull}/>
                             ) : (
-                                <View style={styles.noImagePlaceholder}>
-                                    <Ionicons name="image-outline" size={48} color="#ccc"/>
-                                    <ThemedText style={{color: '#aaa'}}>Sin fotos adjuntas</ThemedText>
+                                <View style={[G.center, {gap: 8}]}>
+                                    <Ionicons name="image-outline" size={48} color={COLORS.mutedIcon}/>
+                                    <ThemedText style={{color: COLORS.mutedIcon}}>Sin fotos adjuntas</ThemedText>
                                 </View>
                             )}
                         </TouchableOpacity>
                     </View>
 
-                    <View style={styles.infoGrid}>
-                        <View style={styles.infoCard}>
-                            <Ionicons name="calendar" size={20} color="#0a7ea4"/>
-                            <ThemedText style={styles.infoCardLabel}>Fecha de Cita</ThemedText>
-                            <ThemedText type="defaultSemiBold" style={styles.infoCardValue}>{dateInfo.day}</ThemedText>
+                    {/* Grid de fecha/hora */}
+                    <View style={G.infoGrid}>
+                        <View style={[G.infoGridCard, {backgroundColor: surfaceBg}]}>
+                            <Ionicons name="calendar" size={20} color={COLORS.primary}/>
+                            <ThemedText style={G.infoGridLabel}>Fecha de Cita</ThemedText>
+                            <ThemedText type="defaultSemiBold" style={G.infoGridValue}>{dateInfo.day}</ThemedText>
                         </View>
-                        <View style={[styles.infoCard, {flex: 0.4}]}>
-                            <Ionicons name="time" size={20} color="#0a7ea4"/>
-                            <ThemedText style={styles.infoCardLabel}>Hora</ThemedText>
-                            <ThemedText type="defaultSemiBold" style={styles.infoCardValue}>{dateInfo.time}</ThemedText>
+                        <View style={[G.infoGridCard, {flex: 0.4, backgroundColor: surfaceBg}]}>
+                            <Ionicons name="time" size={20} color={COLORS.primary}/>
+                            <ThemedText style={G.infoGridLabel}>Hora</ThemedText>
+                            <ThemedText type="defaultSemiBold" style={G.infoGridValue}>{dateInfo.time}</ThemedText>
                         </View>
                     </View>
 
+                    {/* Tarjeta de ubicación */}
                     <TouchableOpacity
-                        style={styles.locationCard}
+                        style={[G.locationCard, {marginBottom: 20}]}
                         onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`)}>
-                        <View style={styles.iconCircle}>
-                            <Ionicons name="location" size={20} color="#fff"/>
+                        <View style={G.iconCirclePrimary}>
+                            <Ionicons name="location" size={20} color={COLORS.onPrimary}/>
                         </View>
                         <View style={{flex: 1, marginLeft: 15}}>
-                            <ThemedText type="defaultSemiBold" style={{fontSize: 15}}>Ubicación del cliente</ThemedText>
-                            <ThemedText style={styles.subText}>{job.address}</ThemedText>
+                            <ThemedText type="defaultSemiBold" style={{fontSize: 15, color: textColor}}>
+                                Ubicación del cliente
+                            </ThemedText>
+                            <ThemedText
+                                style={[G.infoValueSm, {color: mutedText, marginTop: 2}]}>{job.address}</ThemedText>
                         </View>
-                        <Ionicons name="map-outline" size={24} color="#0a7ea4"/>
+                        <Ionicons name="map-outline" size={24} color={COLORS.primary}/>
                     </TouchableOpacity>
 
-                    <View style={styles.descSection}>
-                        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Descripción del
-                            problema</ThemedText>
-                        <ThemedText style={styles.descriptionText}>
+                    {/* Descripción */}
+                    <View style={{marginBottom: 30}}>
+                        <ThemedText type="defaultSemiBold"
+                                    style={[G.sectionTitle, {marginBottom: 8, opacity: 0.7, color: textColor}]}>
+                            Descripción del problema
+                        </ThemedText>
+                        <ThemedText style={[G.infoValue, {lineHeight: 22, opacity: 0.8, color: mutedText}]}>
                             {job.description || "No hay descripción detallada para este servicio."}
                         </ThemedText>
                     </View>
 
-                    {/* SECCIÓN DE BOTÓN DINÁMICO */}
+                    {/* Botón dinámico o estado completado */}
                     {!isFinished ? (
                         <TouchableOpacity
-                            style={[styles.mainActionButton, isInProgress ? styles.btnFinish : styles.btnStart]}
+                            style={[
+                                G.btnPrimary,
+                                isInProgress && {backgroundColor: COLORS.success},
+                                {flexDirection: 'row', gap: 12, ...shadow.primaryLg}
+                            ]}
                             onPress={confirmAction}
                             disabled={updating}>
                             {updating ? (
-                                <ActivityIndicator color="#fff"/>
+                                <ActivityIndicator color={COLORS.onPrimary}/>
                             ) : (
                                 <>
                                     <Ionicons name={isInProgress ? "checkmark-circle" : "play-circle"} size={24}
-                                              color="#fff"/>
-                                    <ThemedText style={styles.mainActionText}>
+                                              color={COLORS.onPrimary}/>
+                                    <ThemedText style={[G.btnText, {letterSpacing: 1}]}>
                                         {isInProgress ? "FINALIZAR TRABAJO" : "EMPEZAR TRABAJO"}
                                     </ThemedText>
                                 </>
                             )}
                         </TouchableOpacity>
                     ) : (
-                        <View style={styles.completedBox}>
-                            <Ionicons name="ribbon" size={24} color="#10b981"/>
-                            <ThemedText style={styles.completedText}>Este servicio ha sido finalizado con
-                                éxito</ThemedText>
+                        <View style={G.completedBox}>
+                            <Ionicons name="ribbon" size={24} color={COLORS.success}/>
+                            <ThemedText style={G.completedText}>Este servicio ha sido finalizado con éxito</ThemedText>
                         </View>
                     )}
 
@@ -242,6 +264,7 @@ export default function JobDetailScreen() {
                 </ScrollView>
             </SafeAreaView>
 
+            {/* Modal de visor de imagen */}
             <Modal visible={imageViewerVisible} transparent={true} onRequestClose={() => setImageViewerVisible(false)}>
                 <ImageViewer
                     imageUrls={[{url: job?.image_url || ''}]}
@@ -249,116 +272,10 @@ export default function JobDetailScreen() {
                     onSwipeDown={() => setImageViewerVisible(false)}
                     backgroundColor="black"
                 />
-                <TouchableOpacity style={styles.closeModalBtn} onPress={() => setImageViewerVisible(false)}>
+                <TouchableOpacity style={G.closeModalBtn} onPress={() => setImageViewerVisible(false)}>
                     <Ionicons name="close" size={30} color="#fff"/>
                 </TouchableOpacity>
             </Modal>
         </ThemedView>
     );
 }
-
-const styles = StyleSheet.create({
-    center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
-    topBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(150,150,150,0.1)',
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    badge: {paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8},
-    badgeText: {color: '#fff', fontSize: 10, fontWeight: '800', textTransform: 'uppercase'},
-    scroll: {padding: 20},
-
-    headerSection: {marginBottom: 25},
-    title: {fontSize: 26, fontWeight: '800', marginBottom: 15},
-
-    mainImageWrapper: {
-        width: '100%',
-        height: 220,
-        borderRadius: 24,
-        overflow: 'hidden',
-        backgroundColor: 'rgba(150,150,150,0.1)',
-    },
-    jobImage: {width: '100%', height: '100%', resizeMode: 'cover'},
-    noImagePlaceholder: {flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8},
-
-    infoGrid: {flexDirection: 'row', gap: 12, marginBottom: 15},
-    infoCard: {
-        flex: 1,
-        backgroundColor: 'rgba(150, 150, 150, 0.05)',
-        padding: 14,
-        borderRadius: 18,
-    },
-    infoCardLabel: {fontSize: 10, opacity: 0.4, textTransform: 'uppercase', marginTop: 4, fontWeight: 'bold'},
-    infoCardValue: {fontSize: 13, marginTop: 2, textTransform: 'capitalize'},
-
-    locationCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 20,
-        backgroundColor: 'rgba(10, 126, 164, 0.03)',
-        borderWidth: 1,
-        borderColor: 'rgba(10, 126, 164, 0.1)',
-        marginBottom: 20
-    },
-    iconCircle: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#0a7ea4',
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    subText: {fontSize: 13, opacity: 0.6, marginTop: 2},
-
-    descSection: {marginBottom: 30},
-    sectionTitle: {fontSize: 16, marginBottom: 8, opacity: 0.7},
-    descriptionText: {fontSize: 15, lineHeight: 22, opacity: 0.8},
-
-    mainActionButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 18,
-        borderRadius: 20,
-        gap: 12,
-        shadowColor: "#0a7ea4",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 5
-    },
-    btnStart: {backgroundColor: '#0a7ea4'},
-    btnFinish: {backgroundColor: '#10b981', shadowColor: '#10b981'},
-    mainActionText: {color: '#fff', fontWeight: 'bold', fontSize: 16, letterSpacing: 1},
-
-    completedBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        padding: 20,
-        borderRadius: 20,
-        gap: 12
-    },
-    completedText: {color: '#10b981', fontWeight: 'bold', fontSize: 14, textAlign: 'center'},
-
-    closeModalBtn: {
-        position: 'absolute',
-        top: 50,
-        right: 20,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        padding: 10,
-        borderRadius: 25
-    }
-});

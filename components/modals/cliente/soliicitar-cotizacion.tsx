@@ -5,21 +5,36 @@ import {
     ScrollView,
     Alert,
     ActivityIndicator,
-    StyleSheet,
     TouchableOpacity,
     View,
     Platform,
-    Image
+    Image,
+    useColorScheme,
 } from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import {Buffer} from 'buffer';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { toTimestamp } from '@/utils/date';
+import {toTimestamp} from '@/utils/date';
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {supabase} from "@/libs/supabase";
-import {useThemeColor} from '@/hooks/use-theme-color';
+import {G, COLORS, shadow} from "@/styles/global-styles";
+
+// Hook de tema local
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        surfaceBg: isDark ? COLORS.surfaceMedium : COLORS.surfaceLight,
+        inputBg: isDark ? COLORS.inputDark : COLORS.inputLight,
+        borderColor: COLORS.border,
+        placeholderColor: COLORS.placeholder,
+    };
+};
 
 interface CreateQuoteModalProps {
     visible: boolean;
@@ -33,18 +48,19 @@ const SERVICIOS = [
     {label: "🧱 Albañilería y acabados", value: "Albañilería y acabados", icon: "hammer"},
     {label: "🌬️ Climatización", value: "Climatización y electrodomésticos", icon: "snow"},
     {label: "🔧 Mantenimiento General", value: "Mantenimiento General", icon: "build"},
+    {label: "💻 Domótica", value: "Domótica", icon: "computer"},
     {label: "🛠️ Otro", value: "Otro", icon: "construct"},
 ];
 
 export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModalProps) => {
+    const {textColor, mutedText, inputBg, borderColor, placeholderColor} = useAppTheme();
+
     const [loading, setLoading] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [showServiceList, setShowServiceList] = useState(false);
-
     const [selectedDate, setSelectedDate] = useState(new Date());
-
     const [form, setForm] = useState({
         servicio: '',
         descripcion: '',
@@ -52,11 +68,7 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
         direccion: '',
         fecha_preferida: toTimestamp(new Date())
     });
-
     const [profile, setProfile] = useState<{ name: string } | null>(null);
-
-    const textColor = useThemeColor({}, 'text');
-    const placeholderColor = "rgba(150,150,150,0.5)";
 
     useEffect(() => {
         if (visible) {
@@ -89,21 +101,17 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
         }
     };
 
-
     const updateForm = (key: string, value: any) => {
         setForm(prev => ({...prev, [key]: value}));
     };
-
 
     const onDateChange = (event: any, date?: Date) => {
         setShowDatePicker(false);
         if (event.type === 'set' && date) {
             const updatedDate = new Date(selectedDate);
             updatedDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-
             setSelectedDate(updatedDate);
             updateForm('fecha_preferida', toTimestamp(updatedDate));
-
             if (Platform.OS === 'android') {
                 setTimeout(() => setShowTimePicker(true), 100);
             }
@@ -115,12 +123,10 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
         if (event.type === 'set' && time) {
             const updatedDate = new Date(selectedDate);
             updatedDate.setHours(time.getHours(), time.getMinutes());
-
             setSelectedDate(updatedDate);
             updateForm('fecha_preferida', toTimestamp(updatedDate));
         }
     };
-
 
     const handlePickImage = async (useCamera: boolean) => {
         const {status} = useCamera
@@ -150,13 +156,10 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
         try {
             const fileName = `quote_${Date.now()}.jpg`;
             const filePath = `cotizaciones/${fileName}`;
-
             const {error: uploadError} = await supabase.storage
                 .from('jobs')
                 .upload(filePath, Buffer.from(base64, 'base64'), {contentType: 'image/jpeg'});
-
             if (uploadError) throw uploadError;
-
             const {data: {publicUrl}} = supabase.storage.from('jobs').getPublicUrl(filePath);
             updateForm('evidencia_url', publicUrl);
         } catch (e: any) {
@@ -180,7 +183,7 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
                 .from('cotizaciones')
                 .insert([{
                     ...form,
-                    fecha_preferida, // ISOString corregido
+                    fecha_preferida,
                     created_by: user?.id,
                     estado: 'Pendiente'
                 }])
@@ -189,7 +192,6 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
 
             if (error) throw error;
 
-            // Notificación a administradores
             if (job) {
                 supabase.functions.invoke('send-to-admins', {
                     body: {
@@ -215,47 +217,47 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
 
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-            <ThemedView style={styles.container}>
-                <View style={styles.header}>
+            <ThemedView style={G.flex1}>
+                <View style={[G.modalHeader, {borderBottomColor: borderColor}]}>
                     <ThemedText type="subtitle">Nueva Solicitud</ThemedText>
                     <TouchableOpacity onPress={onClose} disabled={loading}>
                         <Ionicons name="close" size={26} color={textColor}/>
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
-
-                    <ThemedText style={styles.label}>Foto del problema</ThemedText>
-                    <View style={styles.imageContainer}>
+                <ScrollView style={G.modalForm} showsVerticalScrollIndicator={false}>
+                    <ThemedText style={G.sectionLabel}>Foto del problema</ThemedText>
+                    <View style={[G.imageContainer, {height: 200, marginBottom: 10}]}>
                         {form.evidencia_url ? (
-                            <Image source={{uri: form.evidencia_url}} style={styles.imagePreview}/>
+                            <Image source={{uri: form.evidencia_url}} style={G.imageFull}/>
                         ) : (
-                            <View style={styles.placeholder}>
-                                <Ionicons name="camera-outline" size={44} color="#888"/>
-                                <ThemedText style={styles.placeholderText}>Sube una foto para el
-                                    diagnóstico</ThemedText>
+                            <View style={G.center}>
+                                <Ionicons name="camera-outline" size={44} color={COLORS.mutedIcon}/>
+                                <ThemedText style={[G.infoValueSm, {color: mutedText, marginTop: 8}]}>
+                                    Sube una foto para el diagnóstico
+                                </ThemedText>
                             </View>
                         )}
                         {uploadingImage && (
-                            <View style={styles.loader}>
-                                <ActivityIndicator color="#007AFF"/>
+                            <View style={G.loaderOverlay}>
+                                <ActivityIndicator color={COLORS.primary}/>
                             </View>
                         )}
-                        <View style={styles.imageRow}>
-                            <TouchableOpacity style={styles.imageBtn} onPress={() => handlePickImage(false)}>
-                                <Ionicons name="images" size={16} color="#fff"/>
-                                <ThemedText style={styles.imageBtnText}>Galería</ThemedText>
+                        <View style={[G.imageButtonsRow, {bottom: 15}]}>
+                            <TouchableOpacity style={G.imageActionBtn} onPress={() => handlePickImage(false)}>
+                                <Ionicons name="images" size={16} color={COLORS.onPrimary}/>
+                                <ThemedText style={G.imageActionBtnText}>Galería</ThemedText>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.imageBtn} onPress={() => handlePickImage(true)}>
-                                <Ionicons name="camera" size={16} color="#fff"/>
-                                <ThemedText style={styles.imageBtnText}>Cámara</ThemedText>
+                            <TouchableOpacity style={G.imageActionBtn} onPress={() => handlePickImage(true)}>
+                                <Ionicons name="camera" size={16} color={COLORS.onPrimary}/>
+                                <ThemedText style={G.imageActionBtnText}>Cámara</ThemedText>
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                    <ThemedText style={styles.label}>📍 Ubicación</ThemedText>
+                    <ThemedText style={G.sectionLabel}>📍 Ubicación</ThemedText>
                     <TextInput
-                        style={[styles.input, {color: textColor}]}
+                        style={[G.inputBordered, {color: textColor, backgroundColor: inputBg, borderColor}]}
                         placeholder="Dirección completa..."
                         placeholderTextColor={placeholderColor}
                         value={form.direccion}
@@ -263,24 +265,23 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
                         editable={!loading}
                     />
 
-                    <ThemedText style={styles.label}>📅 Fecha y Hora sugerida</ThemedText>
-                    <View style={styles.row}>
-                        <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowDatePicker(true)}>
-                            <ThemedText style={styles.pickerBtnText}>
+                    <ThemedText style={G.sectionLabel}>📅 Fecha y Hora sugerida</ThemedText>
+                    <View style={G.pickerRow}>
+                        <TouchableOpacity style={G.pickerBtn} onPress={() => setShowDatePicker(true)}>
+                            <ThemedText style={G.pickerBtnText}>
                                 {selectedDate.toLocaleDateString('es-ES')}
                             </ThemedText>
-                            <Ionicons name="calendar-outline" size={18} color="#007AFF"/>
+                            <Ionicons name="calendar-outline" size={18} color={COLORS.primary}/>
                         </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowTimePicker(true)}>
-                            <ThemedText style={styles.pickerBtnText}>
+                        <TouchableOpacity style={G.pickerBtn} onPress={() => setShowTimePicker(true)}>
+                            <ThemedText style={G.pickerBtnText}>
                                 {selectedDate.toLocaleTimeString('es-ES', {
                                     hour: '2-digit',
                                     minute: '2-digit',
                                     hour12: true
                                 })}
                             </ThemedText>
-                            <Ionicons name="time-outline" size={18} color="#007AFF"/>
+                            <Ionicons name="time-outline" size={18} color={COLORS.primary}/>
                         </TouchableOpacity>
                     </View>
 
@@ -294,46 +295,47 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
                         />
                     )}
 
-                    <ThemedText style={styles.label}>Tipo de Servicio</ThemedText>
-                    <View style={styles.assignmentBox}>
-                        <TouchableOpacity
-                            style={styles.dropdownTrigger}
-                            onPress={() => setShowServiceList(!showServiceList)}
-                        >
-                            <View style={styles.workerInfoRow}>
-                                <View
-                                    style={[styles.miniAvatar, {backgroundColor: selectedServiceData ? '#007AFF' : 'rgba(150,150,150,0.2)'}]}>
+                    <ThemedText style={G.sectionLabel}>Tipo de Servicio</ThemedText>
+                    <View style={[G.dropdownBox, {padding: 16}]}>
+                        <TouchableOpacity style={G.dropdownTrigger}
+                                          onPress={() => setShowServiceList(!showServiceList)}>
+                            <View style={G.row}>
+                                <View style={[G.iconBadgeSm, {
+                                    backgroundColor: selectedServiceData ? COLORS.primary : COLORS.surfaceStrong,
+                                    marginRight: 12
+                                }]}>
                                     <Ionicons name={(selectedServiceData?.icon as any) || "construct-outline"} size={16}
-                                              color="#fff"/>
+                                              color={COLORS.onPrimary}/>
                                 </View>
                                 <ThemedText type="defaultSemiBold">
                                     {selectedServiceData ? selectedServiceData.label : "Selecciona un servicio"}
                                 </ThemedText>
                             </View>
-                            <Ionicons name={showServiceList ? "chevron-up" : "chevron-down"} size={20} color="#007AFF"/>
+                            <Ionicons name={showServiceList ? "chevron-up" : "chevron-down"} size={20}
+                                      color={COLORS.primary}/>
                         </TouchableOpacity>
 
                         {showServiceList && (
-                            <View style={styles.dropdownContent}>
+                            <View style={G.dropdownContent}>
                                 {SERVICIOS.map(s => (
-                                    <TouchableOpacity key={s.value} style={styles.workerOption} onPress={() => {
+                                    <TouchableOpacity key={s.value} style={G.dropdownOption} onPress={() => {
                                         updateForm('servicio', s.value);
                                         setShowServiceList(false);
                                     }}>
-                                        <ThemedText style={form.servicio === s.value && styles.activeOption}>
+                                        <ThemedText style={form.servicio === s.value && G.dropdownOptionActive}>
                                             {s.label}
                                         </ThemedText>
                                         {form.servicio === s.value &&
-                                            <Ionicons name="checkmark-circle" size={18} color="#007AFF"/>}
+                                            <Ionicons name="checkmark-circle" size={18} color={COLORS.primary}/>}
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         )}
                     </View>
 
-                    <ThemedText style={styles.label}>Descripción</ThemedText>
+                    <ThemedText style={G.sectionLabel}>Descripción</ThemedText>
                     <TextInput
-                        style={[styles.input, styles.textArea, {color: textColor}]}
+                        style={[G.textArea, {color: textColor, backgroundColor: inputBg, borderColor}]}
                         multiline
                         placeholder="Describe brevemente el problema..."
                         placeholderTextColor={placeholderColor}
@@ -343,12 +345,12 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
                     />
 
                     <TouchableOpacity
-                        style={[styles.submitBtn, (loading || uploadingImage) && styles.disabled]}
+                        style={[G.btnPrimary, (loading || uploadingImage) && G.btnDisabled, {marginTop: 35}]}
                         onPress={handleSave}
                         disabled={loading || uploadingImage}
                     >
-                        {loading ? <ActivityIndicator color="#fff"/> :
-                            <ThemedText style={styles.submitText}>Enviar Cotización</ThemedText>}
+                        {loading ? <ActivityIndicator color={COLORS.onPrimary}/> :
+                            <ThemedText style={G.btnText}>Enviar Cotización</ThemedText>}
                     </TouchableOpacity>
 
                     <View style={{height: 60}}/>
@@ -357,95 +359,3 @@ export const CreateQuoteModal = ({visible, onClose, onSuccess}: CreateQuoteModal
         </Modal>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {flex: 1},
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(150,150,150,0.1)'
-    },
-    form: {padding: 20},
-    label: {
-        fontSize: 12,
-        fontWeight: '800',
-        marginTop: 20,
-        marginBottom: 8,
-        opacity: 0.6,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5
-    },
-    input: {backgroundColor: 'rgba(150,150,150,0.1)', borderRadius: 14, padding: 15, fontSize: 16},
-    textArea: {height: 110, textAlignVertical: 'top'},
-    imageContainer: {
-        height: 200,
-        backgroundColor: 'rgba(150,150,150,0.05)',
-        borderRadius: 18,
-        overflow: 'hidden',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(150,150,150,0.1)'
-    },
-    imagePreview: {width: '100%', height: '100%', resizeMode: 'cover'},
-    placeholder: {alignItems: 'center'},
-    placeholderText: {fontSize: 11, opacity: 0.5, marginTop: 8},
-    imageRow: {position: 'absolute', bottom: 15, flexDirection: 'row', gap: 10},
-    imageBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#007AFF',
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderRadius: 22,
-        gap: 6
-    },
-    imageBtnText: {color: '#fff', fontSize: 12, fontWeight: '700'},
-    loader: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.2)',
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    row: {flexDirection: 'row', gap: 12},
-    pickerBtn: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: 'rgba(150,150,150,0.1)',
-        padding: 16,
-        borderRadius: 14
-    },
-    pickerBtnText: {fontSize: 15, fontWeight: '600'},
-    assignmentBox: {
-        backgroundColor: 'rgba(150, 150, 150, 0.05)',
-        padding: 16,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: 'rgba(150, 150, 150, 0.1)'
-    },
-    dropdownTrigger: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-    workerInfoRow: {flexDirection: 'row', alignItems: 'center', gap: 12},
-    miniAvatar: {width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center'},
-    dropdownContent: {marginTop: 15, borderTopWidth: 1, borderColor: 'rgba(150, 150, 150, 0.1)', paddingTop: 10},
-    workerOption: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, alignItems: 'center'},
-    activeOption: {color: '#007AFF', fontWeight: 'bold'},
-    submitBtn: {
-        backgroundColor: '#007AFF',
-        padding: 18,
-        borderRadius: 16,
-        marginTop: 35,
-        alignItems: 'center',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.1,
-        shadowRadius: 4
-    },
-    submitText: {color: '#fff', fontWeight: 'bold', fontSize: 17},
-    disabled: {opacity: 0.5}
-});

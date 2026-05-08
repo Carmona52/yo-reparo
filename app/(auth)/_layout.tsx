@@ -1,5 +1,4 @@
 import { Stack } from 'expo-router';
-import ForgotPassword from "@/app/(auth)/forgot-password";
 
 export default function AuthLayout() {
     return (

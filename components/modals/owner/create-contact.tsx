@@ -1,7 +1,6 @@
 import React, {useState} from 'react';
 import {
     Modal,
-    StyleSheet,
     View,
     TextInput,
     TouchableOpacity,
@@ -15,6 +14,20 @@ import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
 import {createContact} from "@/libs/owner/contacts/create-contact";
 import {CreateContact} from "@/libs/types/contact";
+import {G, COLORS} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        inputBg: isDark ? COLORS.inputDark : COLORS.inputLight,
+        borderColor: COLORS.border,
+        placeholderColor: COLORS.placeholder,
+    };
+};
 
 interface Props {
     visible: boolean;
@@ -23,7 +36,7 @@ interface Props {
 }
 
 export function CreateContactModal({visible, onClose, onSuccess}: Props) {
-    const isDark = useColorScheme() === 'dark';
+    const {textColor, inputBg, borderColor, placeholderColor} = useAppTheme();
     const [loading, setLoading] = useState(false);
 
     const [form, setForm] = useState<CreateContact>({
@@ -67,16 +80,18 @@ export function CreateContactModal({visible, onClose, onSuccess}: Props) {
     };
 
     const InputField = ({label, value, onChange, placeholder, icon, keyboard = 'default'}: any) => (
-        <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>{label}</ThemedText>
-            <View style={[styles.inputWrapper, {backgroundColor: isDark ? '#2c2c2e' : '#f0f0f0'}]}>
-                <Ionicons name={icon} size={18} color="#8e8e93" style={{marginRight: 10}}/>
+        <View style={{marginBottom: 15}}>
+            <ThemedText style={{fontSize: 14, marginBottom: 8, fontWeight: '500', color: textColor}}>
+                {label}
+            </ThemedText>
+            <View style={[G.inputWithIcon, {backgroundColor: inputBg, borderWidth: 1, borderColor}]}>
+                <Ionicons name={icon} size={18} color={placeholderColor} style={{marginRight: 10}}/>
                 <TextInput
-                    style={[styles.input, {color: isDark ? '#fff' : '#000'}]}
+                    style={[G.inputText, {color: textColor}]}
                     value={value}
                     onChangeText={onChange}
                     placeholder={placeholder}
-                    placeholderTextColor="#8e8e93"
+                    placeholderTextColor={placeholderColor}
                     keyboardType={keyboard}
                 />
             </View>
@@ -85,18 +100,18 @@ export function CreateContactModal({visible, onClose, onSuccess}: Props) {
 
     return (
         <Modal visible={visible} animationType="slide" transparent>
-            <View style={styles.modalOverlay}>
-                <ThemedView style={styles.modalContent}>
+            <View style={G.modalOverlay}>
+                <ThemedView style={G.modalSheet}>
                     {/* Header */}
-                    <View style={styles.header}>
+                    <View style={G.modalHeaderInner}>
                         <ThemedText type="title">Nuevo Contacto</ThemedText>
-                        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                            <Ionicons name="close" size={24} color={isDark ? "#fff" : "#000"}/>
+                        <TouchableOpacity onPress={onClose} style={G.modalCloseBtn}>
+                            <Ionicons name="close" size={24} color={textColor}/>
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom: 20}}>
-                        <ThemedText style={styles.sectionTitle}>Datos Principales</ThemedText>
+                        <ThemedText style={G.sectionLabel}>Datos Principales</ThemedText>
                         <InputField
                             label="Nombre Completo"
                             icon="person-outline"
@@ -113,7 +128,7 @@ export function CreateContactModal({visible, onClose, onSuccess}: Props) {
                             keyboard="phone-pad"
                         />
 
-                        <ThemedText style={styles.sectionTitle}>Dirección</ThemedText>
+                        <ThemedText style={G.sectionLabel}>Dirección</ThemedText>
                         <InputField
                             label="Calle y Número"
                             icon="location-outline"
@@ -152,14 +167,14 @@ export function CreateContactModal({visible, onClose, onSuccess}: Props) {
 
                     {/* Botón Guardar */}
                     <TouchableOpacity
-                        style={[styles.saveBtn, {opacity: loading ? 0.7 : 1}]}
+                        style={[G.btnModal, loading && G.btnDisabled]}
                         onPress={handleSave}
                         disabled={loading}
                     >
-                        {loading ? <ActivityIndicator color="#fff"/> : (
+                        {loading ? <ActivityIndicator color={COLORS.onPrimary}/> : (
                             <>
-                                <Ionicons name="checkmark-circle" size={20} color="#fff"/>
-                                <ThemedText style={styles.saveBtnText}>Guardar Contacto</ThemedText>
+                                <Ionicons name="checkmark-circle" size={20} color={COLORS.onPrimary}/>
+                                <ThemedText style={G.btnText}>Guardar Contacto</ThemedText>
                             </>
                         )}
                     </TouchableOpacity>
@@ -168,71 +183,3 @@ export function CreateContactModal({visible, onClose, onSuccess}: Props) {
         </Modal>
     );
 }
-
-const styles = StyleSheet.create({
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        height: '85%',
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-        padding: 24,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 25,
-    },
-    closeBtn: {
-        padding: 5,
-        backgroundColor: 'rgba(150,150,150,0.1)',
-        borderRadius: 20,
-    },
-    sectionTitle: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        opacity: 0.4,
-        textTransform: 'uppercase',
-        marginTop: 15,
-        marginBottom: 10,
-        letterSpacing: 1,
-    },
-    inputGroup: {
-        marginBottom: 15,
-    },
-    label: {
-        fontSize: 14,
-        marginBottom: 8,
-        fontWeight: '500',
-    },
-    inputWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 12,
-        paddingHorizontal: 15,
-        height: 50,
-    },
-    input: {
-        flex: 1,
-        fontSize: 16,
-    },
-    saveBtn: {
-        backgroundColor: '#0a7ea4',
-        height: 55,
-        borderRadius: 16,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 10,
-        marginTop: 10,
-    },
-    saveBtnText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-});

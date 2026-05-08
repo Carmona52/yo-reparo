@@ -1,15 +1,30 @@
-import { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Alert, ScrollView, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import React, {useState, useEffect} from 'react';
+import {View, TouchableOpacity, Alert, ScrollView, Linking, useColorScheme} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {Ionicons} from '@expo/vector-icons';
+import {useRouter} from 'expo-router';
 
-import { ThemedView } from "@/components/themed-view";
-import { ThemedText } from "@/components/themed-text";
-import { supabase } from "@/libs/supabase";
+import {ThemedView} from "@/components/themed-view";
+import {ThemedText} from "@/components/themed-text";
+import {supabase} from "@/libs/supabase";
+import {G, COLORS} from "@/styles/global-styles";
+
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        mutedText: COLORS.muted,
+        cardBg: isDark ? COLORS.cardDark : COLORS.cardLight,
+        surfaceBg: isDark ? COLORS.surfaceMedium : COLORS.surfaceLight,
+        borderColor: COLORS.border,
+    };
+};
 
 export default function ProfileScreen() {
     const router = useRouter();
+    const {isDark, textColor, mutedText, surfaceBg} = useAppTheme();
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -19,15 +34,13 @@ export default function ProfileScreen() {
 
     async function getProfile() {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-
+            const {data: {user}} = await supabase.auth.getUser();
             if (user) {
-                const { data, error } = await supabase
+                const {data, error} = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', user.id)
                     .single();
-
                 if (error) throw error;
                 setProfile(data);
             }
@@ -40,28 +53,22 @@ export default function ProfileScreen() {
 
     async function handleSignOut() {
         Alert.alert("Cerrar Sesión", "¿Estás seguro de que quieres salir?", [
-            { text: "Cancelar", style: "cancel" },
+            {text: "Cancelar", style: "cancel"},
             {
                 text: "Salir",
                 style: "destructive",
                 onPress: async () => {
                     try {
-                        const { data: { user } } = await supabase.auth.getUser();
-
+                        const {data: {user}} = await supabase.auth.getUser();
                         if (user) {
-                            const { error } = await supabase
+                            const {error} = await supabase
                                 .from('profiles')
-                                .update({ expo_token: null })
+                                .update({expo_token: null})
                                 .eq('id', user.id);
-
-                            if (error) {
-                                console.error("Error limpiando el token de Expo:", error.message);
-                            } else {
-                                console.log("Token de Expo removido exitosamente.");
-                            }
+                            if (error) console.error("Error limpiando token:", error.message);
                         }
                     } catch (error: any) {
-                        console.error("Error inesperado al limpiar el token:", error.message);
+                        console.error("Error limpiando token:", error.message);
                     } finally {
                         await supabase.auth.signOut();
                         router.replace("/(auth)/login");
@@ -70,19 +77,15 @@ export default function ProfileScreen() {
             }
         ]);
     }
+
     const handleWhatsAppPress = async () => {
         const phoneNumber = "522382288483";
         const message = "Hola Yo Reparo, necesito ayuda con problemas dentro de la app";
         const url = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
-
         try {
             const supported = await Linking.canOpenURL(url);
-
-            if (supported) {
-                await Linking.openURL(url);
-            } else {
-                await Linking.openURL(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`);
-            }
+            if (supported) await Linking.openURL(url);
+            else await Linking.openURL(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`);
         } catch (error) {
             Alert.alert("Error", "No se pudo abrir WhatsApp");
         }
@@ -90,33 +93,40 @@ export default function ProfileScreen() {
 
     if (loading) {
         return (
-            <ThemedView style={styles.center}>
+            <ThemedView style={G.center}>
                 <ThemedText>Cargando perfil...</ThemedText>
             </ThemedView>
         );
     }
 
     return (
-        <ThemedView style={{ flex: 1 }}>
-            <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-                <ScrollView showsVerticalScrollIndicator={false}>
-                    <View style={styles.container}>
+        <ThemedView style={G.flex1}>
+            <SafeAreaView style={G.flex1} edges={['top']}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom: 20}}>
+                    <View style={[G.pageContent, {paddingTop: 0}]}>
                         {/* Cabecera de Perfil */}
-                        <View style={styles.header}>
-                            <View style={styles.avatarContainer}>
-                                <Ionicons name="person-circle" size={100} color="#007AFF" />
+                        <View style={G.profileHeader}>
+                            <View style={[G.avatarCircle, {backgroundColor: surfaceBg}]}>
+                                <Ionicons name="person-circle" size={90} color={COLORS.primary}/>
                             </View>
-                            <ThemedText type="title" style={styles.userName}>
+                            <ThemedText type="title" style={[G.profileName, {color: textColor}]}>
                                 {profile?.name || "Cliente"}
                             </ThemedText>
-                            <View style={styles.badge}>
-                                <ThemedText style={styles.badgeText}>USUARIO REGISTRADO</ThemedText>
+                            <View style={[G.badge, {
+                                backgroundColor: `${COLORS.primary}1A`,
+                                paddingHorizontal: 12,
+                                paddingVertical: 4,
+                                borderRadius: 20
+                            }]}>
+                                <ThemedText style={[G.badgeText, {color: COLORS.primary}]}>USUARIO
+                                    REGISTRADO</ThemedText>
                             </View>
                         </View>
 
                         {/* Información Personal */}
-                        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Mi Información</ThemedText>
-                        <View style={styles.infoSection}>
+                        <ThemedText type="defaultSemiBold" style={[G.sectionLabel, {marginTop: 0}]}>Mi
+                            Información</ThemedText>
+                        <View style={[G.cardSurface, {marginBottom: 20}]}>
                             <ProfileItem
                                 icon="mail-outline"
                                 label="Correo electrónico"
@@ -134,110 +144,56 @@ export default function ProfileScreen() {
                             />
                         </View>
 
-                        {/* Opciones del Cliente */}
-                        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Actividad</ThemedText>
+                        {/* Actividad */}
+                        <ThemedText type="defaultSemiBold" style={G.sectionLabel}>Actividad</ThemedText>
 
+                        {/* Mis Cotizaciones */}
                         <TouchableOpacity
-                            style={styles.clientButton}
+                            style={[G.menuItem, {backgroundColor: surfaceBg, marginBottom: 10}]}
                             onPress={() => router.push("/cotizaciones")}>
-                            <View style={styles.buttonIconBg}>
-                                <Ionicons name="document-text-outline" size={22} color="#007AFF" />
+                            <View style={[G.iconBadgeSm, {backgroundColor: `${COLORS.primary}1A`}]}>
+                                <Ionicons name="document-text-outline" size={22} color={COLORS.primary}/>
                             </View>
-                            <ThemedText style={styles.buttonText}>Mis Cotizaciones</ThemedText>
-                            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                            <ThemedText style={[G.menuItemText, {color: textColor}]}>Mis Cotizaciones</ThemedText>
+                            <Ionicons name="chevron-forward" size={20} color={COLORS.mutedIcon}/>
                         </TouchableOpacity>
 
+                        {/* Soporte Técnico (WhatsApp) */}
                         <TouchableOpacity
-                            style={styles.clientButton}
+                            style={[G.menuItem, {backgroundColor: surfaceBg, marginBottom: 10}]}
                             onPress={handleWhatsAppPress}>
-                            <View style={styles.buttonIconBg}>
-                                <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+                            <View style={[G.iconBadgeSm, {backgroundColor: `${COLORS.whatsapp}1A`}]}>
+                                <Ionicons name="logo-whatsapp" size={22} color={COLORS.whatsapp}/>
                             </View>
-                            <ThemedText style={styles.buttonText}>Soporte Técnico</ThemedText>
-                            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                            <ThemedText style={[G.menuItemText, {color: textColor}]}>Soporte Técnico</ThemedText>
+                            <Ionicons name="chevron-forward" size={20} color={COLORS.mutedIcon}/>
                         </TouchableOpacity>
 
-                        {/* Botón Salir */}
+                        {/* Cerrar Sesión */}
                         <TouchableOpacity
-                            style={styles.signOutButton}
+                            style={G.signOutBtn}
                             onPress={handleSignOut}>
-                            <Ionicons name="log-out-outline" size={20} color="#ff4444" />
-                            <ThemedText style={styles.signOutText}>Cerrar Sesión</ThemedText>
+                            <Ionicons name="log-out-outline" size={20} color={COLORS.danger}/>
+                            <ThemedText style={G.signOutText}>Cerrar Sesión</ThemedText>
                         </TouchableOpacity>
                     </View>
+
+                    <ThemedText style={G.versionText}>Yo Reparo • v1.1.0</ThemedText>
                 </ScrollView>
             </SafeAreaView>
         </ThemedView>
     );
 }
 
-function ProfileItem({ icon, label, value }: { icon: any, label: string, value: string }) {
+function ProfileItem({icon, label, value}: { icon: any; label: string; value: string }) {
+    const {textColor, mutedText} = useAppTheme();
     return (
-        <View style={styles.infoItem}>
-            <Ionicons name={icon} size={22} color="#007AFF" style={styles.infoIcon} />
-            <View>
-                <ThemedText style={styles.infoLabel}>{label}</ThemedText>
-                <ThemedText style={styles.infoValue}>{value}</ThemedText>
+        <View style={[G.infoRow, {justifyContent: 'flex-start'}]}>
+            <Ionicons name={icon} size={22} color={COLORS.primary} style={{marginRight: 15, width: 30}}/>
+            <View style={G.infoTextGroup}>
+                <ThemedText style={G.infoLabel}>{label}</ThemedText>
+                <ThemedText style={[G.infoValue, {color: textColor}]}>{value}</ThemedText>
             </View>
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { alignItems: 'center', marginBottom: 25 },
-    avatarContainer: { marginBottom: 10 },
-    userName: { fontSize: 24, marginBottom: 5 },
-    badge: {
-        backgroundColor: '#E6F4FE', // Color de tu app.json
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 20,
-    },
-    badgeText: { color: '#007AFF', fontSize: 11, fontWeight: 'bold' },
-    sectionTitle: { marginBottom: 10, marginTop: 15, opacity: 0.8 },
-    infoSection: {
-        backgroundColor: 'rgba(150, 150, 150, 0.05)',
-        borderRadius: 15,
-        padding: 15,
-        marginBottom: 20,
-    },
-    infoItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-    },
-    infoIcon: { marginRight: 15 },
-    infoLabel: { fontSize: 12, opacity: 0.6 },
-    infoValue: { fontSize: 16, fontWeight: '500' },
-    clientButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(150, 150, 150, 0.05)',
-        padding: 12,
-        borderRadius: 15,
-        marginBottom: 10,
-    },
-    buttonIconBg: {
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        backgroundColor: '#E6F4FE',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15,
-    },
-    buttonText: { flex: 1, fontSize: 16, fontWeight: '500' },
-    signOutButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 15,
-        borderRadius: 15,
-        marginTop: 30,
-        borderWidth: 1,
-        borderColor: '#ff4444',
-    },
-    signOutText: { color: '#ff4444', fontWeight: 'bold', marginLeft: 10 },
-});

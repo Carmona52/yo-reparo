@@ -3,7 +3,6 @@ import {
     View,
     TextInput,
     TouchableOpacity,
-    StyleSheet,
     ActivityIndicator,
     Alert,
     useColorScheme,
@@ -19,26 +18,31 @@ import {supabase} from '@/libs/supabase'
 import {registerForPushNotificationsAsync} from '@/libs/notifications/notifications';
 import {ThemedView} from '@/components/themed-view'
 import {ThemedText} from '@/components/themed-text'
+import {G, COLORS, shadow} from '@/styles/global-styles'
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
+const useAppTheme = () => {
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+    return {
+        isDark,
+        textColor: isDark ? '#fff' : '#000',
+        inputBg: isDark ? COLORS.inputDark : COLORS.inputLight,
+        borderColor: isDark ? '#38383a' : '#eee',
+        placeholderColor: COLORS.placeholder,
+        iconColor: isDark ? '#8e8e93' : '#666',
+    };
+};
+
 export default function Login() {
     const router = useRouter()
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const {isDark, textColor, inputBg, borderColor, placeholderColor, iconColor} = useAppTheme();
 
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
-
-    const inputWrapperStyle = [
-        styles.inputWrapper,
-        {
-            backgroundColor: isDark ? '#1c1c1e' : '#f9f9f9',
-            borderColor: isDark ? '#38383a' : '#eee',
-        }
-    ];
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -49,7 +53,6 @@ export default function Login() {
         try {
             const {data, error} = await supabase.auth.signInWithPassword({email, password})
             if (error) throw error;
-
             if (data.user) {
                 await registerForPushNotificationsAsync();
             }
@@ -62,85 +65,116 @@ export default function Login() {
     }
 
     return (
-        <ThemedView style={styles.container}>
+        <ThemedView style={G.flex1}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{flex: 1}}>
-
+                style={G.flex1}>
                 <ScrollView
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={{
+                        flexGrow: 1,
+                        justifyContent: 'center',
+                        paddingHorizontal: 32,
+                        paddingVertical: 40
+                    }}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled">
-                    <View style={styles.header}>
-                        <View style={styles.logoRow}>
+                    <View style={{alignItems: 'center', marginBottom: 30, width: '100%'}}>
+                        <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100%',
+                            height: 120
+                        }}>
                             <Image
                                 source={require('@/assets/images/favicon.png')}
-                                style={styles.faviconImage}
+                                style={{flex: 0.4, height: '100%', maxWidth: 80}}
                                 resizeMode="contain"
                             />
                             <Image
                                 source={require('@/assets/images/Yoreparo1024.png')}
-                                style={styles.bannerImage}
+                                style={{flex: 1, height: '100%', maxWidth: 200}}
                                 resizeMode="contain"
                             />
                         </View>
                     </View>
 
-                    <View style={styles.formContainer}>
-                        <View style={inputWrapperStyle}>
-                            <Ionicons name="mail-outline" size={20} color={isDark ? '#8e8e93' : '#666'}
-                                      style={styles.icon}/>
+                    <View style={{width: '100%'}}>
+                        {/* Email input */}
+                        <View style={[G.inputWithIcon, {
+                            backgroundColor: inputBg,
+                            borderWidth: 1,
+                            borderColor,
+                            borderRadius: 20,
+                            height: 60,
+                            marginBottom: 16
+                        }]}>
+                            <Ionicons name="mail-outline" size={20} color={iconColor} style={{marginRight: 12}}/>
                             <TextInput
                                 placeholder="Correo electrónico"
-                                placeholderTextColor={isDark ? '#8e8e93' : '#999'}
+                                placeholderTextColor={placeholderColor}
                                 value={email}
                                 onChangeText={setEmail}
-                                style={[styles.input, {color: isDark ? '#fff' : '#000'}]}
+                                style={[G.inputText, {color: textColor}]}
                                 autoCapitalize="none"
                                 autoCorrect={false}
-                                keyboardType="email-address"/>
+                                keyboardType="email-address"
+                            />
                         </View>
 
-                        <View style={inputWrapperStyle}>
-                            <Ionicons name="lock-closed-outline" size={20} color={isDark ? '#8e8e93' : '#666'}
-                                      style={styles.icon}/>
+                        {/* Password input */}
+                        <View style={[G.inputWithIcon, {
+                            backgroundColor: inputBg,
+                            borderWidth: 1,
+                            borderColor,
+                            borderRadius: 20,
+                            height: 60,
+                            marginBottom: 16
+                        }]}>
+                            <Ionicons name="lock-closed-outline" size={20} color={iconColor} style={{marginRight: 12}}/>
                             <TextInput
                                 placeholder="Contraseña"
-                                placeholderTextColor={isDark ? '#8e8e93' : '#999'}
+                                placeholderTextColor={placeholderColor}
                                 value={password}
                                 onChangeText={setPassword}
-                                style={[styles.input, {color: isDark ? '#fff' : '#000'}]}
-                                secureTextEntry={!showPassword}/>
+                                style={[G.inputText, {color: textColor}]}
+                                secureTextEntry={!showPassword}
+                            />
                             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                                 <Ionicons
                                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                                     size={20}
-                                    color={isDark ? '#8e8e93' : '#666'}/>
+                                    color={iconColor}
+                                />
                             </TouchableOpacity>
                         </View>
 
                         <TouchableOpacity
-                            style={[styles.button, {backgroundColor: '#0a7ea4'}]}
+                            style={[G.btnPrimary, {height: 60, borderRadius: 20, marginTop: 10}, shadow.md]}
                             onPress={handleLogin}
                             disabled={loading}
                             activeOpacity={0.8}>
                             {loading
-                                ? <ActivityIndicator color="#fff"/>
-                                : <ThemedText style={styles.buttonText}>Iniciar Sesión</ThemedText>
+                                ? <ActivityIndicator color={COLORS.onPrimary}/>
+                                : <ThemedText style={G.btnText}>Iniciar Sesión</ThemedText>
                             }
                         </TouchableOpacity>
 
-                        <View style={styles.footer}>
+                        <View style={{flexDirection: 'row', justifyContent: 'center', marginTop: 30}}>
                             <ThemedText style={{opacity: 0.6}}>¿Aún no tienes cuenta? </ThemedText>
                             <TouchableOpacity onPress={() => router.replace('/(auth)/register')}>
-                                <ThemedText type="defaultSemiBold" style={{color: '#0a7ea4'}}>Regístrate</ThemedText>
+                                <ThemedText type="defaultSemiBold"
+                                            style={{color: COLORS.primary}}>Regístrate</ThemedText>
                             </TouchableOpacity>
+                        </View>
 
-                        </View> <View style={styles.footer}>
+                        <View style={{flexDirection: 'row', justifyContent: 'center', marginTop: 10}}>
                             <TouchableOpacity
-                                style={styles.forgotPasswordBtn}
+                                style={{alignSelf: 'flex-end', marginBottom: 20, marginRight: 5}}
                                 onPress={() => router.push('/(auth)/forgot-password')}>
-                                <ThemedText style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</ThemedText>
+                                <ThemedText style={{color: COLORS.primary, fontSize: 14, opacity: 0.8}}>
+                                    ¿Olvidaste tu contraseña?
+                                </ThemedText>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -149,89 +183,3 @@ export default function Login() {
         </ThemedView>
     )
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        justifyContent: 'center',
-        paddingHorizontal: 32,
-        paddingVertical: 40,
-    },
-    header: {
-        alignItems: 'center',
-        marginBottom: 30,
-        width: '100%',
-    },
-    logoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        height: 120,
-    },
-    faviconImage: {
-        flex: 0.4,
-        height: '100%',
-        maxWidth: 80,
-    },
-    bannerImage: {
-        flex: 1,
-        height: '100%',
-        maxWidth: 200,
-    },
-    formContainer: {
-        width: '100%',
-    },
-    inputWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderRadius: 20,
-        paddingHorizontal: 20,
-        height: 60,
-        marginBottom: 16,
-    },
-    icon: {
-        marginRight: 12,
-    },
-    input: {
-        flex: 1,
-        fontSize: 16,
-    },
-    button: {
-        height: 60,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 10,
-        shadowColor: "#000",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    buttonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 17,
-        letterSpacing: 0.5
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 30,
-    },
-    forgotPasswordBtn: {
-        alignSelf: 'flex-end',
-        marginBottom: 20,
-        marginRight: 5,
-    },
-    forgotPasswordText: {
-        color: '#0a7ea4',
-        fontSize: 14,
-        opacity: 0.8,
-    },
-})

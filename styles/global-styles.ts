@@ -60,7 +60,6 @@ export const COLORS = {
     muted: '#8e8e93',
     mutedIcon: '#ccc',
 
-// Fondos dependientes de esquema (usar con isDark)
     cardLight: '#ffffff',
     cardDark: 'rgba(255, 255, 255, 0.05)',
     inputLight: '#f0f2f5',
@@ -68,11 +67,9 @@ export const COLORS = {
     inputAltLight: '#f9f9f9',
     inputAltDark: '#2c2c2e',
 
-// Texto sobre fondos de color
     onPrimary: '#ffffff',
 } as const;
 
-// ── Sombras cross-platform ────────────────────────────────────────────────────
 
 export const shadow = {
     none: {},
@@ -102,11 +99,9 @@ export const shadow = {
     }),
 } as const;
 
-// ── Estilos globales ──────────────────────────────────────────────────────────
 
 export const G = StyleSheet.create({
 
-// ── Layout base ───────────────────────────────────────────────────────────
     flex1: {flex: 1},
     center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
     row: {flexDirection: 'row', alignItems: 'center'},
@@ -115,7 +110,6 @@ export const G = StyleSheet.create({
     pageContent: {padding: 20, paddingBottom: 40},
     pageContentLg: {padding: 24, paddingBottom: 60},
 
-// ── Encabezados de pantalla ───────────────────────────────────────────────
     pageHeader: {
         paddingHorizontal: 20,
         paddingTop: 10,

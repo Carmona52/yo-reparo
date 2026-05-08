@@ -216,10 +216,29 @@ export default function HomeScreen() {
                                             <ThemedText type="defaultSemiBold" style={[G.taskTitle, { color: textColor }]}>
                                                 {task.title}
                                             </ThemedText>
+
+                                            <View style={[G.row, { gap: 6, marginBottom: 15 }]}>
+                                                <Ionicons name="person-sharp" size={14} color={mutedText} />
+                                                <ThemedText style={[G.infoValueSm, { flex: 1, color: mutedText }]} numberOfLines={1}>
+                                                    {
+                                                        task.name_client && task.name_client.length > 0
+                                                            ? task.name_client
+                                                            : task.profiles?.name
+                                                    }
+                                                </ThemedText>
+                                            </View>
+                                            <View style={[G.row, { gap: 6, marginBottom: 15 }]}>
+                                                <Ionicons name="location-outline" size={14} color={mutedText} />
+                                                <ThemedText style={[G.infoValueSm, { flex: 1, color: mutedText }]} numberOfLines={1}>
+                                                    {task.address}
+                                                </ThemedText>
+                                            </View>
                                             <ThemedText style={[G.taskStatus, { color: COLORS.primary }]}>
                                                 {task.status}
                                             </ThemedText>
                                         </View>
+
+
                                         <Ionicons name="chevron-forward" size={16} color={COLORS.mutedIcon} />
                                     </View>
                                 </TouchableOpacity>
